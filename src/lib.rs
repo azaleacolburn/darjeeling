@@ -100,7 +100,7 @@ pub mod neural_network {
         /// let hidden_layers: i32 = 1;
         /// let mut net: NeuralNetwork = NeuralNetwork::new(inputs, hidden, answer, hidden_layers);
         /// ```
-        fn new(input_num: i32, hidden_num: i32, answer_num: i32, hidden_layers: i32, debug: bool) -> NeuralNetwork {
+        pub fn new(input_num: i32, hidden_num: i32, answer_num: i32, hidden_layers: i32, debug: bool) -> NeuralNetwork {
             let mut net: NeuralNetwork = NeuralNetwork { node_array: vec![], sensor: Some(0), answer: Some(hidden_layers as usize + 1), debug: debug };
             let mut rng = rand::thread_rng();
 
@@ -159,7 +159,7 @@ pub mod neural_network {
         /// let model_name = net.learn(&mut data, categories, learning_rate).unwrap();
         /// ```
         /// 
-        fn learn(&mut self, data: &mut Vec<Input>, categories: Vec<String>, learning_rate: f32) -> Option<String> {
+        pub fn learn(&mut self, data: &mut Vec<Input>, categories: Vec<String>, learning_rate: f32) -> Option<String> {
             let mut epochs:f32 = 0.0;
             let mut sum:f32 = 0.0;
             let mut count:f32 = 0.0;
@@ -347,7 +347,7 @@ pub mod neural_network {
         /// 
         /// # Returns
         /// The name of the model
-        fn write_model(&self) -> Option<String>{
+        pub     fn write_model(&self) -> Option<String>{
             
             let mut rng = rand::thread_rng();
             let file_num: u32 = rng.gen();
@@ -385,7 +385,7 @@ pub mod neural_network {
         /// 
         /// # Returns
         /// A neural network read from a serialized neural network file
-        fn read_model(&self, model_name: String) -> NeuralNetwork {
+        pub fn read_model(&self, model_name: String) -> NeuralNetwork {
 
             println!("Loading model");
 
