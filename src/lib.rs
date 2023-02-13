@@ -74,7 +74,7 @@ pub mod neural_network {
     /// The top-level neural network struct
     /// sensor and answer represents which layer sensor and answer are on
     #[derive(Debug, Serialize, Deserialize)]
-    struct NeuralNetwork {
+    pub struct NeuralNetwork {
         node_array: Vec<Vec<Node>>,
         sensor: Option<usize>,
         answer: Option<usize>,
@@ -403,6 +403,16 @@ pub mod neural_network {
 
             net
         }
+        /// Formats cateories from a vector of string slices to a vector of strings
+        fn categories_format(categories_str: Vec<&str>) -> Vec<String> {
+            let mut categories:Vec<String> = vec![];
+            for category in categories_str {
+                categories.push(category.to_string());
+            }
+        
+            categories
+        }
+        
     }
 }
 
