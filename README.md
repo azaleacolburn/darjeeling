@@ -7,19 +7,25 @@ elocolburn@comcast.net
 # Installation
 Add the following to your `Cargo.toml` file
 ```
-darjeeling = "0.1.2"
+darjeeling = "0.1.4"
 ```
 # Example
 ```rust
     use core::{panic};
-    use std::{fs};
-    use crate::input::Input;
-    use crate::neural_network::NeuralNetwork;
-    use std::io::{BufReader, BufRead};
+    use darjeeling::{network::NeuralNetwork, tests, input::Input}
+    use std::{io::{BufReader, BufRead}, fs};
 
+    /// This program  function would read from a file containing all possible inputs to a binary logic gate, and all the correct answers.
+    /// Then it would train a model with 1 hidden layer. 
+    /// 2 nodes in it's input layer, because there are two inputs.
+    /// 2 Nodes for it's output layer because there are two possible answers(the "brighter" one is selected a the chosen answer)
+    /// and 2 nodes in it's hidden layer, because I like patterns.
+    /// If this doesn't work, check the tests.ts source code for verified working code.
+    /// Hint: Try fiddling with the learning rate you're using if things aren't working properly
+    /// Different problems work differently with different learning rates, although I recommend one of 0.5 to start.m
     fn train_test_xor() {
         let learning_rate:f32 = 1.0;
-        let categories = vec![String::from("1"), String::from("0")];
+        let categories = NeuralNetwork::categories_format(vec!["0","1"]);
         let data = xor_file();
 
 
@@ -29,7 +35,7 @@ darjeeling = "0.1.2"
     }
 
     fn train_network_xor(mut data:Vec<Input>, categories: Vec<String>, learning_rate: f32) -> Option<String> {
-        let mut net = NeuralNetwork::new(2, 2, 2, 1, false);
+        let mut net = NeuralNetwork::new(2, 2, 2, 1);
 
         
         match net.learn(&mut data, categories, learning_rate) {
