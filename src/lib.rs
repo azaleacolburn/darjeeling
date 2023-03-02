@@ -8,6 +8,6 @@
 pub static DEBUG: bool = false;
 
 pub mod input;
-pub mod network;
+pub mod categorize;
 pub mod node;
 pub mod tests;

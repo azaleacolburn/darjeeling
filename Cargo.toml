@@ -1,10 +1,10 @@
 [package]
 name = "darjeeling"
 authors = ["Elo Colburn elocolburn@comcast.net"]
-version = "0.1.4"
+version = "0.2.0"
 description = "Machine learning tools for rust. Currently comprising of categorization neural network model training"
 edition = "2021"
-license = "MIT OR Apache-2.0"
+license = "MIT"
 rust-version = "1.66.0"
 keywords = ["machine-learning", "categorization", "deep-learning", "neural-networks"]
 exclude = [
@@ -18,3 +18,4 @@ num = "0.4.0"
 rand = "0.8.5"
 serde = { version="1.0.152", features = ["derive"] }
 serde_json = "1.0.93"
+bacon = "2.5.0"

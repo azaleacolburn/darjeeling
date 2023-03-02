@@ -1,35 +1,34 @@
 #[cfg(test)]
 use core::panic;
 use std::{io::{BufReader, BufRead}, fs};
-use crate::input::Input;
-use crate::DEBUG;
-use crate::network::NeuralNetwork;
+use crate::{input::Input, DEBUG, categorize::NeuralNetwork};
 
 #[test]
 fn train_test_xor() {
     let learning_rate:f32 = 0.5;
-    let categories = vec![String::from("1"), String::from("0")];
+    let categories = categories_format(vec!["1","0"]);
     let data = xor_file();
-
 
     let model_name: String = train_network_xor(data.clone(), categories.clone(), learning_rate).unwrap();
 
     NeuralNetwork::test(data, categories, model_name);
 }
 
+/// Panics if the learn function returns an Err variant
 fn train_network_xor(mut data:Vec<Input>, categories: Vec<String>, learning_rate: f32) -> Option<String> {
     let mut net = NeuralNetwork::new(2, 2, 2, 1);
 
     
     match net.learn(&mut data, categories, learning_rate) {
 
-        Some(name) => Some(name),
-        None => None
+        Ok(net) => Some(net),
+
+        Err(error) => panic!("{:?}", error)
     }
 }
 
 // Read the file you want to and format it as Inputs
-fn xor_file() -> Vec<Input> {
+pub fn xor_file() -> Vec<Input> {
     let file = match fs::File::open("training_data/xor.txt") {
         Ok(file) => file,
         Err(error) => panic!("Panic opening the file: {:?}", error)
@@ -40,7 +39,7 @@ fn xor_file() -> Vec<Input> {
 
     for l in reader.lines() {
 
-        let line = match l {
+        let line: String = match l {
 
             Ok(line) => line,
             Err(error) => panic!("{:?}", error)
@@ -52,14 +51,20 @@ fn xor_file() -> Vec<Input> {
         let input: Input = Input { inputs: float_inputs, answer:init_inputs.get(init_inputs.len()-1).as_ref().unwrap().to_owned().to_string() };
         inputs.push(input);
     }
-
-inputs  
+    inputs  
 }
+
+// TODO: Wite predictive model training first
+// #[test]
+// fn train_test_reverse() {
+//     let learning_rate:f32 = 1.0;
+//     let categories = categories_format()
+// }
 
 #[test]
 fn train_test_digits() {
-    let learning_rate:f32 = 1.0;
-    let categories = NeuralNetwork::categories_format(vec!["0","1","2","3","4","5","6","7","8","9"]);
+    let learning_rate:f32 = 0.05;
+    let categories = categories_format(vec!["0","1","2","3","4","5","6","7","8","9"]);
     let data = digits_file();
 
     let model_name: String = train_network_digits(data.clone(), categories.clone(), learning_rate).unwrap();
@@ -67,13 +72,16 @@ fn train_test_digits() {
     NeuralNetwork::test(data, categories, model_name);
 }
 
+/// # Panics
+/// If the learn function returns an Err
 fn train_network_digits(mut data: Vec<Input>, categories: Vec<String>, learning_rate: f32) -> Option<String> {
     let mut net = NeuralNetwork::new(64, 128, 10, 1);
 
     match net.learn(&mut data, categories, learning_rate) {
 
-        Some(name) => Some(name),
-        None => None
+        Ok(net) => Some(net),
+
+        Err(error) => panic!("{:?}", error)
     }
 }
 
@@ -106,4 +114,16 @@ fn digits_file() -> Vec<Input> {
     }
 
 inputs 
+}
+
+/// Formats cateories from a vector of string slices to a vector of strings
+/// # Params
+/// - Categories Strings: A list of string literals, one for each answer option(category)
+pub fn categories_format(categories_str: Vec<&str>) -> Vec<String> {
+    let mut categories:Vec<String> = vec![];
+    for category in categories_str {
+        categories.push(category.to_string());
+    }
+
+    categories
 }

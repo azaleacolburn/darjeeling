@@ -7,19 +7,19 @@ elocolburn@comcast.net
 # Installation
 Add the following to your `Cargo.toml` file
 ```
-darjeeling = "0.1.4"
+darjeeling = "0.2.0"
 ```
 # Example
 ```rust
     use core::{panic};
-    use darjeeling::{network::NeuralNetwork, tests, input::Input}
+    use darjeeling::{ categorize::NeuralNetwork, tests, input::Input}
     use std::{io::{BufReader, BufRead}, fs};
 
     /// This program  function would read from a file containing all possible inputs to a binary logic gate, and all the correct answers.
     /// Then it would train a model with 1 hidden layer. 
-    /// 2 nodes in it's input layer, because there are two inputs.
-    /// 2 Nodes for it's output layer because there are two possible answers(the "brighter" one is selected a the chosen answer)
-    /// and 2 nodes in it's hidden layer, because I like patterns.
+    /// 2 nodes in its input layer, because there are two inputs.
+    /// 2 Nodes for its output layer because there are two possible answers(the "brighter" one is selected a the chosen answer)
+    /// and 2 nodes in its hidden layer, because I like patterns.
     /// If this doesn't work, check the tests.ts source code for verified working code.
     /// Hint: Try fiddling with the learning rate you're using if things aren't working properly
     /// Different problems work differently with different learning rates, although I recommend one of 0.5 to start.m
@@ -35,7 +35,11 @@ darjeeling = "0.1.4"
     }
 
     fn train_network_xor(mut data:Vec<Input>, categories: Vec<String>, learning_rate: f32) -> Option<String> {
-        let mut net = NeuralNetwork::new(2, 2, 2, 1);
+        let input_num: i32 = 2;
+        let hidden_num: i32 = 2;
+        let answer_num: i32 = 2;
+        let hidden_layers: i32 = 1;
+        let mut net = NeuralNetwork::new(input_num, hidden_num, answer_num, hidden_layers);
 
         
         match net.learn(&mut data, categories, learning_rate) {
@@ -50,7 +54,7 @@ darjeeling = "0.1.4"
         NeuralNetwork::test(data, categories, model_name);
     }
 
-    // Read the file you want to and format it as Inputs
+    // This isn't very important, this just reads the file you want to and format it as Inputs
     fn xor_file() -> Vec<Input> {
         let file = match fs::File::open("training_data/xor.txt") {
             Ok(file) => file,

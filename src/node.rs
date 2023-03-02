@@ -16,12 +16,13 @@ pub struct Node {
 }
 
 impl Node {
-    fn input(&mut self) -> Option<f32>{
+    fn input(&mut self) -> Option<f32> {
         let mut sum:f32 = 0.00;
         for i in 0..self.links {
-            if DEBUG { println!("Node: {:?}", self); }
+            if DEBUG { println!("Link Val: {:?}", self.link_vals[i as usize]); }
             sum += self.link_vals[i as usize].unwrap() * self.link_weights[i as usize];
         }
+
         Some(sum + self.b_weight.unwrap())
     }
 
@@ -31,7 +32,7 @@ impl Node {
         self.cached_output
     }
     
-    pub fn compute_answer_err_sig(&mut self){
+    pub fn compute_answer_err_sig(&mut self) {
         if DEBUG { println!("Err Signal Pre: {:?}", self.err_sig); }
         self.err_sig = Some((self.correct_answer.unwrap() - self.cached_output.unwrap()) * self.cached_output.unwrap() * (1.00 - self.cached_output.unwrap()));
         if DEBUG { println!("Err Signal Post: {:?}", self.err_sig.unwrap()) }
@@ -46,7 +47,7 @@ impl Node {
                 println!("Err: {:?}", self.err_sig);
             }
             self.link_weights[link as usize] += self.err_sig.unwrap() * self.link_vals[link as usize].unwrap() * learning_rate;
-            if DEBUG { println!("Adjusted Weight: {:?}", self.link_weights[link as usize]); }
+            if DEBUG { println!("Adjusted Weight: {:?}\n", self.link_weights[link as usize]); }
         }
     }
 
