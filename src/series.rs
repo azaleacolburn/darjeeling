@@ -76,5 +76,6 @@ impl<T: Clone + Debug + PartialEq, I: Clone + Debug + PartialEq> Series<T, I> {
             print!("{:?}", self.data[i]);
             print!("\n");
         }
+        println!("\n");
     }
 }

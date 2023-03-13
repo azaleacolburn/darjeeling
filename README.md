@@ -10,19 +10,19 @@ Add the following to your `Cargo.toml` file
 darjeeling = "0.2.1"
 ```
 # Example
+This program reads from a file containing all possible inputs to a binary logic gate, and all the correct answers.
+Then it trains a model with 1 hidden layer. 
+2 nodes in its input layer, because there are two inputs.
+2 Nodes for its output layer because there are two possible answers(the "brighter" one is selected a the chosen answer)
+And 2 nodes in its hidden layer, because I like patterns.
+If this doesn't work, check the tests.ts source code for verified working code.
+Hint: Try fiddling with the learning rate you're using if things aren't working properly
+Different problems work differently with different learning rates, although I recommend one of 0.5 to start.
 ```rust
     use core::{panic};
     use darjeeling::{ categorize::NeuralNetwork, tests, input::Input, series::Series, dataframe::{DataFrame, Point}};
     use std::{io::{BufReader, BufRead}, fs};
 
-    /// This program  function would read from a file containing all possible inputs to a binary logic gate, and all the correct answers.
-    /// Then it would train a model with 1 hidden layer. 
-    /// 2 nodes in its input layer, because there are two inputs.
-    /// 2 Nodes for its output layer because there are two possible answers(the "brighter" one is selected a the chosen answer)
-    /// and 2 nodes in its hidden layer, because I like patterns.
-    /// If this doesn't work, check the tests.ts source code for verified working code.
-    /// Hint: Try fiddling with the learning rate you're using if things aren't working properly
-    /// Different problems work differently with different learning rates, although I recommend one of 0.5 to start.m
     fn train_test_xor() {
         let learning_rate:f32 = 1.0;
         let categories = NeuralNetwork::categories_format(vec!["0","1"]);
@@ -80,9 +80,49 @@ darjeeling = "0.2.1"
 
     inputs  
     }
+```
+This program creates a test dataframe and series, then performs several test actions on them.
+I'm sorry about the formatting, I'm not very good at IO formatting
+Feel Free to reach out and offer a better DataFrame display function
 
-    /// This program creates a test dataframe and series, then performs several test actions on them.
+Expected Output:
+       "col1" "col2" "col3" 
+ "row1" 0    1    2    
+ "row2" 3    4    5    
+ "row3" 6    7    8    
+       "col1" "col2" "col3" 
+ "row1"   0      1      2      
+ "row2"   3      4      5      
+ "row3"   6      7      8      
+ "Label!" 10    11    12    
+       "col1" "col2" "col3" 
+ "row1" 0    1    2    
+ "row2" 3    4    5    
+ "row3" 6    7    8
 
+1 "data1"
+2 "data2"
+3 "data3"
+
+
+1 "data1"
+2 "data2"
+3 "data3"
+4 "data4"
+
+
+1 "data1"
+2 "data2"
+3 "data3"
+4 "data4"
+5 "data5"
+
+
+1 "data1"
+2 "data2"
+3 "data3"
+4 "data4"
+```rust
     fn dataframe_add_sub() {
         let mut frame: DataFrame<i32> = quick_frame();
         frame.display();
@@ -96,24 +136,7 @@ darjeeling = "0.2.1"
         frame.delete_row("Label!").unwrap();
         frame.display()
     }
-
-    /// I'm sorry about the formatting, I'm not very good at IO formatting
-    /// Feel Free to reach out and offer a better DataFrame display function
-    /// 
-    /// Expected Output:
-    ///       "col1" "col2" "col3" 
-    /// "row1" 0    1    2    
-    /// "row2" 3    4    5    
-    /// "row3" 6    7    8    
-    ///       "col1" "col2" "col3" 
-    /// "row1"   0      1      2      
-    /// "row2"   3      4      5      
-    /// "row3"   6      7      8      
-    /// "Label!" 10    11    12    
-    ///       "col1" "col2" "col3" 
-    /// "row1" 0    1    2    
-    /// "row2" 3    4    5    
-    /// "row3" 6    7    8   
+  
     fn series_add_sub() {
         let mut series = quick_series();
         series.display();
