@@ -1,5 +1,5 @@
 # DARJEELING
-Machine learning tools for Rust
+Machine learning and data manipulation tools for Rust
 
 ### Contact
 elocolburn@comcast.net
@@ -7,16 +7,21 @@ elocolburn@comcast.net
 # Installation
 Add the following to your `Cargo.toml` file
 ```
-darjeeling = "0.2.2"
+darjeeling = "0.2.3"
 ```
 # Example
-This program reads from a file containing all possible inputs to a binary logic gate, and all the correct answers.
+This program reads from a file containing all possible 
+inputs to a binary logic gate, and all the correct answers.
+
 Then it trains a model with 1 hidden layer. 
 2 nodes in its input layer, because there are two inputs.
 2 Nodes for its output layer because there are two possible answers(the "brighter" one is selected a the chosen answer)
 And 2 nodes in its hidden layer, because I like patterns.
+
 If this doesn't work, check the tests.ts source code for verified working code.
-Hint: Try fiddling with the learning rate you're using if things aren't working properly
+
+Hint: Try fiddling with the learning rate you're using if things aren't working properly.
+
 Different problems work differently with different learning rates, although I recommend one of 0.5 to start.
 ```rust
     use core::{panic};
@@ -82,10 +87,13 @@ Different problems work differently with different learning rates, although I re
     }
 ```
 This program creates a test dataframe and series, then performs several test actions on them.
+
 I'm sorry about the formatting, I'm not very good at IO formatting
+
 Feel Free to reach out and offer a better DataFrame display function
 
 Expected Output:
+```
        "col1" "col2" "col3" 
  "row1" 0    1    2    
  "row2" 3    4    5    
@@ -122,6 +130,7 @@ Expected Output:
 2 "data2"
 3 "data3"
 4 "data4"
+```
 ```rust
     fn dataframe_add_sub() {
         let mut frame: DataFrame<i32> = quick_frame();
