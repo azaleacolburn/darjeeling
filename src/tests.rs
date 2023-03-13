@@ -1,7 +1,6 @@
-#[cfg(test)]
 use core::panic;
 use std::{io::{BufReader, BufRead}, fs};
-use crate::{input::Input, DEBUG, categorize::NeuralNetwork};
+use crate::{input::Input, DEBUG, categorize::NeuralNetwork, dataframe::{DataFrame, Point}, series::Series};
 
 #[test]
 fn train_test_xor() {
@@ -126,4 +125,51 @@ pub fn categories_format(categories_str: Vec<&str>) -> Vec<String> {
     }
 
     categories
+}
+
+#[test]
+fn dataframe_add_sub() {
+    let mut frame: DataFrame<i32> = quick_frame();
+    frame.display();
+    frame.add_row("Label!", 
+        Point::point_vector(
+            frame.get_cols_len() - 1 as usize, 
+            vec![10,11,12]
+        )
+    );
+    frame.display();
+    frame.delete_row("Label!").unwrap();
+    frame.display()
+}
+
+fn quick_frame() -> DataFrame<'static, i32> {
+    DataFrame::new(
+        vec![
+            vec![0,1,2],
+            vec![3,4,5],
+            vec![6,7,8]
+        ],
+        vec!["row1", "row2", "row3"],
+        vec!["col1", "col2", "col3"]
+    )
+}
+
+#[test]
+fn series_add_sub() {
+    let mut series = quick_series();
+    series.display();
+    series.mut_add("data4", 4);
+    series.display();
+    let mut new_series: Series<&str, i32> = series.no_mut_add("data5", 5);
+    new_series.display();
+    new_series.mut_sub(5).unwrap();
+    new_series.display();
+}
+
+fn quick_series() -> Series<&'static str, i32> {
+
+    Series::new(
+        vec!["data1", "data2", "data3"],
+        vec![1,2,3]
+    )
 }
