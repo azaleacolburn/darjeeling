@@ -7,7 +7,7 @@ elocolburn@comcast.net
 # Installation
 Add the following to your `Cargo.toml` file
 ```
-darjeeling = "0.2.1"
+darjeeling = "0.2.2"
 ```
 # Example
 This program reads from a file containing all possible inputs to a binary logic gate, and all the correct answers.
