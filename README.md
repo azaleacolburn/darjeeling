@@ -47,11 +47,7 @@ Different problems work differently with different learning rates, although I re
         let mut net = NeuralNetwork::new(input_num, hidden_num, answer_num, hidden_layers);
 
         
-        match net.learn(&mut data, categories, learning_rate) {
-
-            Some(name) => Some(name),
-            None => None
-        }
+        match net.learn(&mut data, categories, learning_rate).unwrap()
     }
 
     fn test_network_xor(data: Vec<Input>, categories: Vec<String>, model_name: String) {

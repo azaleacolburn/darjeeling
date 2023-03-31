@@ -1,4 +1,5 @@
 #![allow(
+    clippy::clone_double_ref,
     clippy::collapsible_if,
     clippy::module_inception,
     clippy::needless_borrow,
@@ -15,5 +16,8 @@ pub mod categorize;
 pub mod node;
 pub mod dataframe;
 pub mod series;
+pub mod error;
+pub mod activation;
+pub mod types;
 #[cfg(test)]
 pub mod tests;

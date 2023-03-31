@@ -1,6 +1,6 @@
 use core::panic;
 use std::{io::{BufReader, BufRead}, fs};
-use crate::{input::Input, DEBUG, categorize::NeuralNetwork, dataframe::{DataFrame, Point}, series::Series};
+use crate::{input::Input, DEBUG, categorize::NeuralNetwork, dataframe::{DataFrame, Point}, series::Series, types::{Types, self}};
 
 #[test]
 fn train_test_xor() {
@@ -10,7 +10,7 @@ fn train_test_xor() {
 
     let model_name: String = train_network_xor(data.clone(), categories.clone(), learning_rate).unwrap();
 
-    NeuralNetwork::test(data, categories, model_name);
+    NeuralNetwork::test(data, categories, model_name).unwrap();
 }
 
 /// Panics if the learn function returns an Err variant
@@ -68,7 +68,7 @@ fn train_test_digits() {
 
     let model_name: String = train_network_digits(data.clone(), categories.clone(), learning_rate).unwrap();
 
-    NeuralNetwork::test(data, categories, model_name);
+    NeuralNetwork::test(data, categories, model_name).unwrap();
 }
 
 /// # Panics
@@ -128,29 +128,36 @@ pub fn categories_format(categories_str: Vec<&str>) -> Vec<String> {
 }
 
 #[test]
-fn dataframe_add_sub() {
-    let mut frame: DataFrame<i32> = quick_frame();
+fn dataframe_add_sub<'a>() {
+    let mut frame: DataFrame<'a> = quick_frame();
     frame.display();
-    frame.add_row("Label!", 
+    frame.add_row(
+        "Label!", 
         Point::point_vector(
-            frame.get_cols_len() - 1 as usize, 
-            vec![10,11,12]
+            frame.get_cols_len(), 
+            types::fmt_int_type_vec(vec![10, 11, 12])
         )
+    ).unwrap(); 
+    frame.display();
+    print!("{:?}\n", frame.index_at_labels("Label!", "col1"));
+    frame.delete_row("Label!").unwrap();
+    frame.add_col("col3", 
+        Point::point_vector(
+                frame.get_cols_len(), 
+                types::fmt_str_type_vec(vec!["hellow", "fun", "life"])
+                )
     );
     frame.display();
-    frame.delete_row("Label!").unwrap();
-    frame.display()
 }
 
-fn quick_frame() -> DataFrame<'static, i32> {
+fn quick_frame() -> DataFrame<'static> {
     DataFrame::new(
         vec![
-            vec![0,1,2],
-            vec![3,4,5],
-            vec![6,7,8]
+            types::fmt_int_type_vec(vec![0, 1, 2]),
+            types::fmt_str_type_vec(vec!["hello", "hi","heya"])
         ],
         vec!["row1", "row2", "row3"],
-        vec!["col1", "col2", "col3"]
+        vec!["col1", "col2"]
     )
 }
 
@@ -172,4 +179,12 @@ fn quick_series() -> Series<&'static str, i32> {
         vec!["data1", "data2", "data3"],
         vec![1,2,3]
     )
+}
+
+#[test]
+fn fmt_type_vec() {
+    print!("{:?}", 
+        types::fmt_int_type_vec(
+            vec![1, 2, 3]
+    ));
 }

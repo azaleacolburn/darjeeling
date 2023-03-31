@@ -1,6 +1,6 @@
 #[allow(dead_code)]
 use crate::DEBUG;
-use core::panic;
+use crate::error::DarjeelingError;
 use std::{fs, path::Path};
 use serde::{Deserialize, Serialize};
 use rand::{Rng, seq::SliceRandom, thread_rng};
@@ -48,7 +48,7 @@ impl NeuralNetwork {
 
         for i in 1..hidden_layers + 1 {
             let mut hidden_vec:Vec<Node> = vec![];
-            let hidden_links = net.node_array[(i - 1) as usize].len() as i32;
+            let hidden_links = net.node_array[(i - 1) as usize].len();
             if DEBUG { println!("Hidden Links: {:?}", hidden_links) }
             for _j in 0..hidden_num{
                 hidden_vec.push(Node { link_weights: vec![], link_vals: vec![], links: hidden_links, err_sig: None, correct_answer: None, cached_output: None, category: None, b_weight: None });
@@ -57,7 +57,7 @@ impl NeuralNetwork {
         }
 
         net.node_array.push(vec![]);
-        let answer_links = net.node_array[hidden_layers as usize].len() as i32;
+        let answer_links = net.node_array[hidden_layers as usize].len();
         println!("Answer Links: {:?}", answer_links);
         for _i in 0..answer_num {
             net.node_array[net.answer.unwrap()].push(Node { link_weights: vec![], link_vals: vec![], links: answer_links, err_sig: None, correct_answer: None, cached_output: Some(0.0), category: None, b_weight: None });
@@ -72,7 +72,6 @@ impl NeuralNetwork {
                     node.link_vals.push(None);
                 }
             }
-        
         }
         net
     }
@@ -105,11 +104,11 @@ impl NeuralNetwork {
     /// let model_name = net.learn(&mut data, categories, learning_rate).unwrap();
     /// ```
     /// 
-    pub fn learn(&mut self, data: &mut Vec<Input>, categories: Vec<String>, learning_rate: f32) -> Result<String, &str> {
-        let mut epochs:f32 = 0.0;
-        let mut sum:f32 = 0.0;
-        let mut count:f32 = 0.0;
-        let mut err_percent:f32 = 0.0;
+    pub fn learn(&mut self, data: &mut Vec<Input>, categories: Vec<String>, learning_rate: f32) -> Result<String, DarjeelingError> {
+        let mut epochs: f32 = 0.0;
+        let mut sum: f32 = 0.0;
+        let mut count: f32 = 0.0;
+        let mut err_percent: f32 = 0.0;
         let hidden_layers = self.node_array.len() - 2;
 
         self.categorize(categories);
@@ -146,11 +145,11 @@ impl NeuralNetwork {
         let mut name: String;
         match self.write_model() {
 
-            Some(model_name) => {
+            Ok(model_name) => {
                 name = model_name;
             },
 
-            None => return Err("Could not write model")
+            Err(error) => return Err(error)
         }
 
         println!("Training: Finished with accuracy of {:?}/{:?} or {:?} percent after {:?} epochs", sum, count, err_percent, epochs);
@@ -159,12 +158,16 @@ impl NeuralNetwork {
     }
 
     /// Tests a pretrained model
-    pub fn test(mut data: Vec<Input>, categories: Vec<String>, model_name: String) -> Option<String> {
+    pub fn test(mut data: Vec<Input>, categories: Vec<String>, model_name: String) -> Result<String, DarjeelingError<'static>> {
         let mut sum:f32 = 0.0;
         let mut count:f32 = 0.0;
         let mut category: String = String::from("");
 
-        let mut net: NeuralNetwork = NeuralNetwork::read_model(model_name);
+        let mut net: NeuralNetwork = match NeuralNetwork::read_model(model_name.clone()) {
+
+            Ok(net) => net,
+            Err(error) => return Err(DarjeelingError::ReadModelFunctionFailed(model_name, Box::new(error)))
+        };
 
         for node in 0..net.node_array[net.answer.unwrap()].len() {
             net.node_array[net.answer.unwrap()][node].category = Some(categories[node].clone());
@@ -192,7 +195,7 @@ impl NeuralNetwork {
         let err_percent: f32 = (sum/count) * 100.0;
         println!("Testing: Finished with accuracy of {:?}/{:?} or {:?} percentt", sum, count, err_percent);
 
-        Some(category)
+        Ok(category)
     }
 
     /// Assigns categories to answer nodes based on a list of given categories
@@ -203,7 +206,7 @@ impl NeuralNetwork {
             count += 1;
         });
     }
-
+    
     fn assign_answers(&mut self, data: &mut Vec<Input>, line: i32){
         for node in 0..self.node_array[self.answer.unwrap()].len() {
             if self.node_array[self.answer.unwrap()][node].category.as_ref().unwrap().eq(&data[line as usize].answer) {
@@ -213,7 +216,7 @@ impl NeuralNetwork {
             }
         }
     }
-    
+
     /// Passes in data to the sensors, pushs data 'downstream' through the network
     fn push_downstream(&mut self, data: &mut Vec<Input>, line: i32) {
 
@@ -321,7 +324,7 @@ impl NeuralNetwork {
                             self.node_array[(HIDDEN + 1)][next_layer].err_sig
                         }
                     };
-
+                    // This changes based on the activation function
                     self.node_array[HIDDEN][hidden].err_sig = Some(self.node_array[HIDDEN][hidden].err_sig.unwrap() + (self.node_array[(HIDDEN + 1)][next_layer].err_sig.unwrap() * next_weight));
                     if DEBUG { 
                         println!("next err sig {:?}", self.node_array[(HIDDEN + 1)][next_layer].err_sig.unwrap());
@@ -350,7 +353,7 @@ impl NeuralNetwork {
     /// 
     /// # Panics
     /// If there's an error writing to the file, or if the try_exists() method returns Err
-    pub fn write_model(&mut self) -> Option<String>{
+    pub fn write_model(&mut self) -> Result<String, DarjeelingError>{
         
         let mut rng = rand::thread_rng();
         let file_num: u32 = rng.gen();
@@ -372,19 +375,19 @@ impl NeuralNetwork {
                     Ok(()) => {
                         println!("Model {:?} Saved", file_num);
 
-                        Some(name)
+                        Ok(name)
                     },
 
-                    Err(error) => {
-                        panic!("Cannot write to the file: {:?}", error);
+                    Err(_error) => {
+                        Err(DarjeelingError::WriteModelFailed(name))
                     }
                 }
             },
             Ok(true) => {
                 
-                None
+                Err(DarjeelingError::ModelNameAlreadyExists(name))
             },
-            Err(error) => panic!("{:?}", error)
+            Err(error) => Err(DarjeelingError::UnknownError(error))
         }
     }
 
@@ -398,22 +401,22 @@ impl NeuralNetwork {
     /// 
     /// # Panics
     /// If the file cannnot be read, or if the file does not contain a valid serialized Neural Network
-    pub fn read_model(model_name: String) -> NeuralNetwork {
+    pub fn read_model(model_name: String) -> Result<NeuralNetwork, DarjeelingError<'static>> {
 
         println!("Loading model");
 
-        let serialized_net: String = match fs::read_to_string(model_name) {
+        let serialized_net: Result<String, DarjeelingError> = match fs::read_to_string(&model_name) {
 
-            Ok(serizalized_net) => serizalized_net,
-            Err(error) => panic!("{:?}", error)
+            Ok(serizalized_net) => Ok(serizalized_net),
+            Err(error) => Err(DarjeelingError::ReadModelFailed(model_name.clone(), error))
         };
         
-        let net: NeuralNetwork = match serde_json::from_str(&serialized_net) {
+        let net: NeuralNetwork = match serde_json::from_str(&serialized_net.unwrap()) {
 
             Ok(net) => net,
-            Err(error) => panic!("{:?}", error),
+            Err(error) => return Err(DarjeelingError::ReadModelFailed(model_name, error.into()))
         };
 
-        net
+        Ok(net)
     }
 }
