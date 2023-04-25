@@ -1,9 +1,9 @@
 #[allow(dead_code)]
 use serde::{Deserialize, Serialize};
-use crate::DEBUG;
+use crate::{DEBUG, types::Types};
 
 /// Represents a node in the network
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Node {
     pub link_weights: Vec<f32>,
     pub link_vals: Vec<Option<f32>>,
@@ -11,7 +11,7 @@ pub struct Node {
     pub err_sig: Option<f32>,
     pub correct_answer: Option<f32>,
     pub cached_output: Option<f32>,
-    pub category: Option<String>,
+    pub category: Option<Types>,
     pub b_weight: Option<f32>,
 }
 

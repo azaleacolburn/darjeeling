@@ -1,13 +1,15 @@
+use crate::types::Types;
+
 #[allow(dead_code)]
 
 #[derive(Debug, Clone)]
-/// Represents the input for the neural network, in a way it can understand
+/// Represents the input for the neural network
 pub struct Input {
     pub inputs: Vec<f32>,
-    pub answer: String
+    pub answer: Types
 }
 
-impl Input {
+impl Input  {
 
     /// Creates new input
     /// # Params
@@ -18,11 +20,12 @@ impl Input {
     /// This example is for one input into an XOR gate
     /// ```
     /// use darjeeling::input::Input;
+    /// use darjeeling::types::Types;
     /// let inputs: Vec<f32> = vec![0.0,1.0];
-    /// let answer: String = String::from("1");
+    /// let answer: Types = Types::String("1".to_string());
     /// let formated_input: Input = Input::new(inputs, answer);
     /// ```
-    pub fn new(inputs: Vec<f32>, answer: String) -> Input {
+    pub fn new(inputs: Vec<f32>, answer: Types) -> Input {
 
         Input { inputs, answer }
     }

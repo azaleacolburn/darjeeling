@@ -11,7 +11,7 @@ pub enum DarjeelingError<'a> {
     ReadModelFunctionFailed(String, Box<DarjeelingError<'a>>),
     WriteModelFailed(String),
     ModelNameAlreadyExists(String),
-    FormatTypeIsNotValid(TypeId),
+    InvalidFormatType(TypeId),
 
     UnknownError(std::io::Error)
 }
@@ -47,7 +47,7 @@ impl<'a> fmt::Display for DarjeelingError<'a> {
                 "Model name {:?} already exists, \n Hint: Try saving it again",
                 model_name.as_str()
             ),
-            DarjeelingError::FormatTypeIsNotValid(type_id) => write!(f,
+            DarjeelingError::InvalidFormatType(type_id) => write!(f,
                 "We couldn't format this value because the type: {:?} wasn't valid",
                 type_id
             ),

@@ -1,19 +1,14 @@
-use core::panic;
-use std::{any::{TypeId}};
+use serde::{Serialize, Deserialize};
 
-use serde::Serialize;
-
-use crate::error::DarjeelingError;
-
-#[derive(Debug, Copy, Clone, Serialize)]
-pub enum Types<'a> {
-    String(&'a str),
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum Types {
+    String(String),
     Integer(i32),
     Float(f32),
     Boolean(bool),
 }
 
-impl<'a> Types<'a> {
+impl Types {
     
     pub fn display(&self) {
 
@@ -27,7 +22,8 @@ impl<'a> Types<'a> {
 
     }
 }
-// Conditional bounded implementations is gonna be so unsafe
+
+// Attempts to create generic type enum vector conversion
 // pub fn fmt_type_vec<T: 'static>(list: Vec<T>) -> Result<Vec<Types<'static>>, DarjeelingError<'static>> 
 // where
 //     &'static str: From<T>, i32: From<T>, f32: From<T>, bool: From<T>, T: Clone, T: Default {
@@ -93,8 +89,8 @@ impl<'a> Types<'a> {
 //     })
 // }
 
-pub fn fmt_str_type_vec(list: Vec<&'static str>) -> Vec<Types<'static>> {
-    let mut fmted_list: Vec<Types<'static>> = vec![];
+pub fn fmt_str_type_vec(list: Vec<&'static str>) -> Vec<Types> {
+    let mut fmted_list: Vec<Types> = vec![];
     for i in 0..list.len() {
         fmted_list.push(Types::String(list[i].clone().try_into().unwrap()))
     }
@@ -102,8 +98,8 @@ pub fn fmt_str_type_vec(list: Vec<&'static str>) -> Vec<Types<'static>> {
     fmted_list
 }
 
-pub fn fmt_int_type_vec(list: Vec<i32>) -> Vec<Types<'static>> {
-    let mut fmted_list: Vec<Types<'static>> = vec![];
+pub fn fmt_int_type_vec(list: Vec<i32>) -> Vec<Types> {
+    let mut fmted_list: Vec<Types> = vec![];
     for i in 0..list.len() {
         fmted_list.push(Types::Integer(list[i].clone().try_into().unwrap()))
     }
@@ -111,8 +107,8 @@ pub fn fmt_int_type_vec(list: Vec<i32>) -> Vec<Types<'static>> {
     fmted_list
 }
 
-pub fn fmt_float_type_vec(list: Vec<f32>) -> Vec<Types<'static>> {
-    let mut fmted_list: Vec<Types<'static>> = vec![];
+pub fn fmt_float_type_vec(list: Vec<f32>) -> Vec<Types> {
+    let mut fmted_list: Vec<Types> = vec![];
     for i in 0..list.len() {
         fmted_list.push(Types::Float(list[i].clone().try_into().unwrap()))
     }
@@ -120,8 +116,8 @@ pub fn fmt_float_type_vec(list: Vec<f32>) -> Vec<Types<'static>> {
     fmted_list
 }
 
-pub fn fmt_bool_type_vec(list: Vec<bool>) -> Vec<Types<'static>> {
-    let mut fmted_list: Vec<Types<'static>> = vec![];
+pub fn fmt_bool_type_vec(list: Vec<bool>) -> Vec<Types> {
+    let mut fmted_list: Vec<Types> = vec![];
     for i in 0..list.len() {
         fmted_list.push(Types::Boolean(list[i].clone().try_into().unwrap()))
     }

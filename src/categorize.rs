@@ -1,11 +1,15 @@
 #[allow(dead_code)]
-use crate::DEBUG;
-use crate::error::DarjeelingError;
+use crate::{
+    DEBUG,
+    error::DarjeelingError,
+    types::Types,
+    node::Node,
+    input::Input
+};
+
 use std::{fs, path::Path};
 use serde::{Deserialize, Serialize};
 use rand::{Rng, seq::SliceRandom, thread_rng};
-use crate::node::Node;
-use crate::input::Input;
 
 /// The top-level neural network struct
 /// sensor and answer represents which layer sensor and answer are on
@@ -14,6 +18,7 @@ pub struct NeuralNetwork {
     node_array: Vec<Vec<Node>>,
     sensor: Option<usize>,
     answer: Option<usize>,
+    parameters: Option<u128>
 }
 
 impl NeuralNetwork {
@@ -39,7 +44,7 @@ impl NeuralNetwork {
     /// let mut net: NeuralNetwork = NeuralNetwork::new(inputs, hidden, answer, hidden_layers);
     /// ```
     pub fn new(input_num: i32, hidden_num: i32, answer_num: i32, hidden_layers: i32) -> NeuralNetwork {
-        let mut net: NeuralNetwork = NeuralNetwork { node_array: vec![], sensor: Some(0), answer: Some(hidden_layers as usize + 1) };
+        let mut net: NeuralNetwork = NeuralNetwork { node_array: vec![], sensor: Some(0), answer: Some(hidden_layers as usize + 1), parameters: None};
         let mut rng = rand::thread_rng();
         net.node_array.push(vec![]);    
         for _i in 0..input_num {
@@ -73,6 +78,13 @@ impl NeuralNetwork {
                 }
             }
         }
+        let mut params = 0;
+        for i in 0..net.node_array.len() {
+            for j in 0..net.node_array[i].len() {
+                params += 1 + net.node_array[i][j].links as u128;
+            }
+        }
+        net.parameters = Some(params);
         net
     }
 
@@ -86,13 +98,16 @@ impl NeuralNetwork {
     /// Try fiddling with this one, but -1.5 - 1.5 is recommended to start.
     /// 
     /// # Returns
-    /// The name of the model that this neural network trained, returned in the option enum.
+    /// The falable name of the model that this neural network trained
+    /// 
+    /// # Err
+    /// 
     /// 
     /// # Examples
-    /// ```rust
-    /// use darjeeling::{categorize::NeuralNetwork, input::Input, tests::*};
+    /// ```ignore
+    /// use darjeeling::{categorize::NeuralNetwork, input::Input, tests::{categories_str_format, xor_file}};
     /// 
-    /// let categories: Vec<String> = categories_format(vec!["0", "1"]);
+    /// let categories: Vec<String> = categories_str_format(vec!["0", "1"]);
     /// // A file containing all possible inputs and correct outputs still needs to be make by you
     /// // 0 0;0
     /// // 0 1;1
@@ -104,7 +119,7 @@ impl NeuralNetwork {
     /// let model_name = net.learn(&mut data, categories, learning_rate).unwrap();
     /// ```
     /// 
-    pub fn learn(&mut self, data: &mut Vec<Input>, categories: Vec<String>, learning_rate: f32) -> Result<String, DarjeelingError> {
+    pub fn learn(&mut self, data: &mut Vec<Input>, categories: Vec<Types>, learning_rate: f32) -> Result<String, DarjeelingError> {
         let mut epochs: f32 = 0.0;
         let mut sum: f32 = 0.0;
         let mut count: f32 = 0.0;
@@ -158,10 +173,10 @@ impl NeuralNetwork {
     }
 
     /// Tests a pretrained model
-    pub fn test(mut data: Vec<Input>, categories: Vec<String>, model_name: String) -> Result<String, DarjeelingError<'static>> {
+    pub fn test(mut data: Vec<Input>, categories: Vec<Types>, model_name: String) -> Result<Types, DarjeelingError<'static>> {
         let mut sum:f32 = 0.0;
         let mut count:f32 = 0.0;
-        let mut category: String = String::from("");
+        let mut category: Option<Types> = None;
 
         let mut net: NeuralNetwork = match NeuralNetwork::read_model(model_name.clone()) {
 
@@ -184,7 +199,7 @@ impl NeuralNetwork {
 
             if DEBUG { println!("Sum: {:?} Count: {:?}", sum, count); }
 
-            category = net.self_analysis(&mut None, &mut sum, &mut count, &mut data, line);
+            category = Some(net.self_analysis(&mut None, &mut sum, &mut count, &mut data, line));
 
             if DEBUG { println!("Sum: {:?} Count: {:?}", sum, count); }
 
@@ -195,11 +210,11 @@ impl NeuralNetwork {
         let err_percent: f32 = (sum/count) * 100.0;
         println!("Testing: Finished with accuracy of {:?}/{:?} or {:?} percentt", sum, count, err_percent);
 
-        Ok(category)
+        Ok(category.unwrap())
     }
 
     /// Assigns categories to answer nodes based on a list of given categories
-    fn categorize(&mut self, categories: Vec<String>) {
+    fn categorize(&mut self, categories: Vec<Types>) {
         let mut count:usize = 0;
         self.node_array[self.answer.unwrap()].iter_mut().for_each(|node| {
             node.category = Some(categories[count].clone());
@@ -209,7 +224,7 @@ impl NeuralNetwork {
     
     fn assign_answers(&mut self, data: &mut Vec<Input>, line: i32){
         for node in 0..self.node_array[self.answer.unwrap()].len() {
-            if self.node_array[self.answer.unwrap()][node].category.as_ref().unwrap().eq(&data[line as usize].answer) {
+            if *self.node_array[self.answer.unwrap()][node].category.as_ref().unwrap() == data[line as usize].answer {
                 self.node_array[self.answer.unwrap()][node].correct_answer = Some(1.0);
             } else {
                 self.node_array[self.answer.unwrap()][node].correct_answer = Some(0.0);
@@ -247,7 +262,7 @@ impl NeuralNetwork {
 
     /// Analyses the chosen answer node's result.
     /// Also increments sum and count
-    fn self_analysis<'a>(&'a self, epochs: &mut Option<f32>, sum: &'a mut f32, count: &'a mut f32, data: &mut Vec<Input>, line: usize) -> String {
+    fn self_analysis<'b>(&'b self, epochs: &mut Option<f32>, sum: &'b mut f32, count: &'b mut f32, data: &mut Vec<Input>, line: usize) -> Types {
 
         let brightest_node: &Node = &self.node_array[self.answer.unwrap()][self.largest_node()];
         let brightness: f32 = brightest_node.cached_output.unwrap();
@@ -314,20 +329,20 @@ impl NeuralNetwork {
         for HIDDEN in 1..(hidden_layers + 1) as usize {            
             for hidden in 0..self.node_array[HIDDEN].len() {
                 self.node_array[HIDDEN][hidden].err_sig = Some(0.0);
-                for next_layer in 0..self.node_array[(HIDDEN + 1 )].len() {
-                    let next_weight = self.node_array[(HIDDEN + 1)][next_layer].link_weights[hidden];
-                    self.node_array[(HIDDEN + 1)][next_layer].err_sig = match self.node_array[(HIDDEN + 1)][next_layer].err_sig.is_none() {
+                for next_layer in 0..self.node_array[HIDDEN + 1 ].len() {
+                    let next_weight = self.node_array[HIDDEN + 1][next_layer].link_weights[hidden];
+                    self.node_array[HIDDEN + 1][next_layer].err_sig = match self.node_array[HIDDEN + 1][next_layer].err_sig.is_none() {
                         true => {
                             Some(0.0)
                         }, 
                         false => {
-                            self.node_array[(HIDDEN + 1)][next_layer].err_sig
+                            self.node_array[HIDDEN + 1][next_layer].err_sig
                         }
                     };
                     // This changes based on the activation function
-                    self.node_array[HIDDEN][hidden].err_sig = Some(self.node_array[HIDDEN][hidden].err_sig.unwrap() + (self.node_array[(HIDDEN + 1)][next_layer].err_sig.unwrap() * next_weight));
+                    self.node_array[HIDDEN][hidden].err_sig = Some(self.node_array[HIDDEN][hidden].err_sig.unwrap() + (self.node_array[HIDDEN + 1][next_layer].err_sig.unwrap() * next_weight));
                     if DEBUG { 
-                        println!("next err sig {:?}", self.node_array[(HIDDEN + 1)][next_layer].err_sig.unwrap());
+                        println!("next err sig {:?}", self.node_array[HIDDEN + 1][next_layer].err_sig.unwrap());
                         println!("next weight {:?}", next_weight);
                     }
                 }
@@ -348,28 +363,38 @@ impl NeuralNetwork {
 
     /// Serializes a trained model so it can be used later
     /// 
-    /// # Returns
+    /// ## Returns
     /// The name of the model
     /// 
-    /// # Panics
-    /// If there's an error writing to the file, or if the try_exists() method returns Err
-    pub fn write_model(&mut self) -> Result<String, DarjeelingError>{
+    /// ## Err
+    /// ### WriteModelFailed:   Wraps the models name
+    /// ### ModelNameAlreadyExists: Wraps the potential model name
+    /// ### UnknownError: Wraps error
+    ///  
+    pub fn write_model(&mut self) -> Result<String, DarjeelingError> {
         
         let mut rng = rand::thread_rng();
         let file_num: u32 = rng.gen();
-        let name = format!("model{:?}", file_num);
+        let name: String = format!("model{:?}.darj", file_num);
 
         match Path::new(&name).try_exists() {
 
             Ok(false) => {
-                let _file = fs::File::create(&name).unwrap();
+                let _file: fs::File = fs::File::create(&name).unwrap();
+                // for i in 0..self.node_array.len() {
+                //     for j in 0..self.node_array[i].len() {
+                //         self.node_array[i][j].cached_output = None;
+                //     }
+                // }
+                // let serialized: String = serde_json::to_string(&self).unwrap();
+                let mut serialized = "".to_string();
                 for i in 0..self.node_array.len() {
                     for j in 0..self.node_array[i].len() {
-                        self.node_array[i][j].cached_output = None;
+                        let _ = &serialized.push_str(format!("l {:?}", fix_string(&mut format!("{:?}", self.node_array[i][j].link_weights))).as_str());
+                        let _ = &serialized.push_str(format!(", {};", self.node_array[i][j].b_weight.unwrap().to_string()).as_str()); 
                     }
                 }
-                let serialized = serde_json::to_string(&self).unwrap();
-                if DEBUG { println!("Serialized: {:?}", serialized); }
+                println!("Serialized: {:?}", serialized);
                 match fs::write(&name, serialized) {
                     
                     Ok(()) => {
@@ -379,6 +404,7 @@ impl NeuralNetwork {
                     },
 
                     Err(_error) => {
+
                         Err(DarjeelingError::WriteModelFailed(name))
                     }
                 }
@@ -393,30 +419,51 @@ impl NeuralNetwork {
 
     /// Reads a serizalized Neural Network
     /// 
-    /// # Params
+    /// ## Params
     /// - Model Name: The name(or more helpfully the path) of the model to be read
     /// 
-    /// # Returns
+    /// ## Returns
     /// A neural network read from a serialized neural network file
     /// 
-    /// # Panics
+    /// ## Err
     /// If the file cannnot be read, or if the file does not contain a valid serialized Neural Network
-    pub fn read_model(model_name: String) -> Result<NeuralNetwork, DarjeelingError<'static>> {
+    pub fn read_model<'b>(model_name: String) -> Result<NeuralNetwork, DarjeelingError<'static>> {
 
         println!("Loading model");
-
+        
+        // Err if the file reading fails
         let serialized_net: Result<String, DarjeelingError> = match fs::read_to_string(&model_name) {
 
             Ok(serizalized_net) => Ok(serizalized_net),
-            Err(error) => Err(DarjeelingError::ReadModelFailed(model_name.clone(), error))
+            Err(error) => return Err(DarjeelingError::ReadModelFailed(model_name.clone(), error))
         };
         
-        let net: NeuralNetwork = match serde_json::from_str(&serialized_net.unwrap()) {
+        // Unwarp is safe
+        // Err if the file isn't a value network
+        // let net: NeuralNetwork = match serde_json::from_str(&serialized_net.expect("This should be safe")) {
 
-            Ok(net) => net,
-            Err(error) => return Err(DarjeelingError::ReadModelFailed(model_name, error.into()))
-        };
+        //     Ok(net) => net,
+        //     Err(error) => return Err(DarjeelingError::ReadModelFailed(model_name, error.into()))
+        // };
+        
+        let weight_array: Vec<&str> = (serialized_net.unwrap().split("l").collect() as String).trim().to_string().split(",").collect::<Vec<&str>>();
+        weight_array.remove(weight_array.len());
+        weight
+        let net: NeuralNetwork = NeuralNetwork { 
+            node_array: ,
+            sensor: None,
+            answer: None,
+            parameters: None
+        }
 
         Ok(net)
     }
+}
+
+fn fix_string(str: &mut String) -> &str {
+
+    str.remove(0);
+    str.remove(str.len());
+
+    str.as_str()
 }

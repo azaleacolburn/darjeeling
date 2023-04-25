@@ -2,35 +2,35 @@ use std::fmt::Debug;
 
 use serde::Serialize;
 
-use crate::types::Types;
+use crate::{types::Types, input::Input};
 
 #[derive(Debug, Serialize)]
 pub struct DataFrame<'a> {
-    frame: Vec<Vec<Point<'a>>>,
+    frame: Vec<Vec<Point>>,
     row_labels: Vec<&'a str>,
     col_labels: Vec<&'a str>
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct Point<'a> {
+pub struct Point {
     row: usize,
     col: usize,
-    val: Types<'a>
+    pub val: Types
 }
 
 impl<'a> DataFrame<'a> {
 
-    pub fn new(frame: Vec<Vec<Types<'a>>>, row_labels: Vec<&'a str>, col_labels: Vec<&'a str>) -> DataFrame<'a> {
+    pub fn new(frame: Vec<Vec<Types>>, row_labels: Vec<&'a str>, col_labels: Vec<&'a str>) -> DataFrame<'a> {
 
-        let mut proper_frame: Vec<Vec<Point<'a>>> = vec![];
+        let mut proper_frame: Vec<Vec<Point>> = vec![];
         // For every column
-        for i in 0..frame.len() {
+        for col in 0..frame.len() {
 
             // proper_frame.push(Point::point_vector(i, frame[i].clone()));
             proper_frame.push(vec![]);
             // For every row in that column
-            for j in 0..frame[i].len() {
-                proper_frame[i].push(Point::new( j, i, frame[i][j]));
+            for row in 0..frame[col].len() {
+                proper_frame[col].push(Point::new( row, col, frame[col][row].clone()));
             }
         }
 
@@ -76,7 +76,7 @@ impl<'a> DataFrame<'a> {
         Ok(self.value_at_index(row_index, col_index))
     }
 
-    pub fn add_col(&mut self, label: &'a str, content: Vec<Point<'a>>) {
+    pub fn add_col(&mut self, label: &'a str, content: Vec<Point>) {
 
         // Checks to make sure the dataframe is still valid
         assert_eq!(self.col_labels.len(), self.frame.len());
@@ -88,7 +88,7 @@ impl<'a> DataFrame<'a> {
     }
 
     // Big confusion
-    pub fn add_row(&mut self, label: &'a str, content: Vec<Point<'a>>) -> Result<(), String> {
+    pub fn add_row(&mut self, label: &'a str, content: Vec<Point>) -> Result<(), String> {
         
         // Checks to make sure the dataframe is still valid
         assert_eq!(self.col_labels.len(), self.col_labels.len());
@@ -199,21 +199,58 @@ impl<'a> DataFrame<'a> {
             print!("\n");
         }
     }
+
+    pub fn frame_to_inputs(&self, answers: Vec<usize>) -> Vec<Input> {
+        
+        let mut input_vec: Vec<Input> = vec![];
+        for i in 0..self.row_labels.len() {
+            let mut input: Input = Input::new(vec![], self.frame[i][answers[i]].val.clone());
+            for j in 0..self.col_labels.len() - 1 {
+                let wrapped = self.value_at_index(i, j);
+                match wrapped {
+                    Types::Boolean(boolean) => {
+                        if *boolean {
+                            input.inputs.push(1.0);
+                        } else {
+                            input.inputs.push(0.0);
+                        }
+                        
+                    },
+                    Types::Float(float) => {
+                        input.inputs.push(*float)
+                    },
+                    Types::Integer(int) => {
+                        input.inputs.push(*int as f32);
+                    },
+                    Types::String(str) => {
+                        let ascii = ascii_converter::string_to_decimals(str).unwrap();
+                        let mut string = String::new();
+                        for i in ascii {
+                            string.push_str(&i.to_string());
+                        }
+                        input.inputs.push(string.parse().unwrap());
+                    }
+                }
+            }
+            input_vec.push(input);
+        }
+        return input_vec;
+    }
 }
 
-impl<'a> Point<'a> {
+impl Point {
 
-    pub fn new(row: usize, col: usize, content: Types<'a>) -> Point<'a> {
+    pub fn new(row: usize, col: usize, content: Types) -> Point {
 
         Point { row, col, val: content }
     }
 
-    pub fn point_vector(col: usize, vector: Vec<Types<'a>>) -> Vec<Point<'a>> {
+    pub fn point_vector(col: usize, vector: Vec<Types>) -> Vec<Point> {
 
-        let mut new_vector: Vec<Point<'a>> = vec![];
+        let mut new_vector: Vec<Point> = vec![];
 
         for row in 0..vector.len() {
-            new_vector.push(Point::new(row, col, vector[row]));
+            new_vector.push(Point::new(row, col, vector[row].clone()));
         }
 
         new_vector

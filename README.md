@@ -9,6 +9,7 @@ Add the following to your `Cargo.toml` file
 ```
 darjeeling = "0.2.3"
 ```
+
 # Example
 This program reads from a file containing all possible 
 inputs to a binary logic gate, and all the correct answers.
@@ -174,3 +175,6 @@ Expected Output:
         )
     }
 ```
+
+# TODO:
+Right now storing models with serialization is super unoptimized, since all fields of the saved neural network that aren't parameters are just set to None, then written to the file! Fixing this could be helpful

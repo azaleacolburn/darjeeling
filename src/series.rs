@@ -1,26 +1,27 @@
 use std::fmt::Debug;
+use crate::types::Types;
 
 #[derive(Debug, Clone)]
-pub struct Series<T: Clone + Debug + PartialEq, I: Clone + Debug + PartialEq> {
-    data: Vec<T>,
-    indexes: Vec<I> 
+pub struct Series<I: Clone + Debug + PartialEq> {
+    data: Vec<Types>,
+    indexes: Vec<I>
 }
 
-impl<T: Clone + Debug + PartialEq, I: Clone + Debug + PartialEq> Series<T, I> {
+impl<'a, I: Clone + Debug + PartialEq> Series<I> {
 
-    pub fn new(data: Vec<T>, indexes: Vec<I>) -> Series<T, I> {
+    pub fn new(data: Vec<Types>, indexes: Vec<I>) -> Series<I> {
 
         Series { data, indexes }
     }
 
-    pub fn mut_add(&mut self, data: T, index: I) {
+    pub fn mut_add(&mut self, data: Types, index: I) {
 
         self.data.push(data);
         self.indexes.push(index);
 
     }
 
-    pub fn no_mut_add(&self, data: T, index: I) -> Series<T, I> {
+    pub fn no_mut_add(&self, data: Types, index: I) -> Series<I> {
 
         let mut new_self = self.clone();
 
@@ -48,9 +49,9 @@ impl<T: Clone + Debug + PartialEq, I: Clone + Debug + PartialEq> Series<T, I> {
         Ok(())    
     }
 
-    pub fn no_mut_sub(&self, index: I) -> Result<Series<T, I>, &str> {
+    pub fn no_mut_sub(&self, index: I) -> Result<Series<I>, &str> {
 
-        let mut new_self: Series<T, I> = self.clone();
+        let mut new_self: Series<I> = self.clone();
         let mut index_to_remove:Option<usize> = None;
         for i in 0..self.indexes.len() {
             if new_self.indexes[i] == index {
@@ -67,13 +68,22 @@ impl<T: Clone + Debug + PartialEq, I: Clone + Debug + PartialEq> Series<T, I> {
         Ok(new_self)   
     }
 
+    pub fn get(&self, index: I) -> Option<Types> {
+        for i in 0..self.indexes.len() {
+            if self.indexes[i] == index {
+                return Some(self.data[i].clone());
+            }
+        }
+        return None;
+    } 
+
     pub fn display(&self) {
 
         assert_eq!(self.data.len(), self.indexes.len());
 
         for i in 0..self.data.len() {
             print!("{:?} ", self.indexes[i]);
-            print!("{:?}", self.data[i]);
+            self.data[i].display();
             print!("\n");
         }
         println!("\n");
