@@ -1,4 +1,3 @@
-#[allow(dead_code)]
 use crate::{
     DEBUG,
     error::DarjeelingError,
@@ -27,13 +26,13 @@ impl NeuralNetwork {
     /// Fills a Neural Network's node_array with empty nodes. 
     /// Initializes random starting link and bias weights between -.5 and .5
     /// 
-    /// # Params
+    /// ## Params
     /// - Inputs: The number of sensors in the input layer
     /// - Hidden: The number of hidden nodes in each layer
     /// - Answer: The number of answer nodes, or possible categories
     /// - Hidden Layers: The number of different hidden layers
     /// 
-    /// # Examples
+    /// ## Examples
     /// ``` rust
     /// use darjeeling::categorize::NeuralNetwork;
     /// 
@@ -48,7 +47,7 @@ impl NeuralNetwork {
         let mut rng = rand::thread_rng();
         net.node_array.push(vec![]);    
         for _i in 0..input_num {
-            net.node_array[net.sensor.unwrap()].push(Node { link_weights: vec![], link_vals: vec![], links: 0, err_sig: None, correct_answer: None, cached_output: None, category: None, b_weight: None });
+            net.node_array[net.sensor.unwrap()].push(Node::new(&vec![], None));
         }
 
         for i in 1..hidden_layers + 1 {
@@ -432,29 +431,43 @@ impl NeuralNetwork {
         println!("Loading model");
         
         // Err if the file reading fails
-        let serialized_net: Result<String, DarjeelingError> = match fs::read_to_string(&model_name) {
-
-            Ok(serizalized_net) => Ok(serizalized_net),
+        let serialized_net: String = match fs::read_to_string(&model_name) {
+            
+            Ok(serizalized_net) => serizalized_net,
             Err(error) => return Err(DarjeelingError::ReadModelFailed(model_name.clone(), error))
         };
-        
-        // Unwarp is safe
-        // Err if the file isn't a value network
-        // let net: NeuralNetwork = match serde_json::from_str(&serialized_net.expect("This should be safe")) {
-
-        //     Ok(net) => net,
-        //     Err(error) => return Err(DarjeelingError::ReadModelFailed(model_name, error.into()))
-        // };
-        
-        let weight_array: Vec<&str> = (serialized_net.unwrap().split("l").collect() as String).trim().to_string().split(",").collect::<Vec<&str>>();
-        weight_array.remove(weight_array.len());
-        weight
-        let net: NeuralNetwork = NeuralNetwork { 
-            node_array: ,
-            sensor: None,
-            answer: None,
-            parameters: None
+ 
+        let mut node_array: Vec<Vec<Node>> = vec![];
+        for i in serialized_net.lines() {
+            let mut layer: Vec<Node> = vec![];
+            loop {
+                if i.trim() == "lb" {
+                    node_array.push(layer);
+                    break;
+                }
+                let node_data:Vec<&str> = i.trim().split(";").collect();
+                let str_weight_array: Vec<&str> = node_data[0].split(",").collect();
+                let mut weight_array: Vec<f32> = vec![];
+                let b_weight: &str = node_data[1];
+                for i in 0..str_weight_array.len() {
+                    weight_array.push(str_weight_array[i].parse().unwrap());
+                    print!("{}", weight_array[i]);
+                }
+                print!("{}", b_weight);
+                
+                let node = Node::new(&weight_array, Some(b_weight.parse().unwrap()) );
+                layer.push(node); 
+            }   
         }
+        let sensor: Option<usize> = Some(node_array[0].len());
+        let answer: Option<usize> = Some(node_array[node_array.len() - 1].len());
+        
+        let net = NeuralNetwork {
+            node_array,
+            sensor,
+            answer,
+            parameters: None
+        };
 
         Ok(net)
     }

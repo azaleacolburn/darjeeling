@@ -16,6 +16,12 @@ pub struct Node {
 }
 
 impl Node {
+
+    pub fn new(link_weights: &Vec<f32>, b_weight: Option<f32>) -> Node {
+
+        Node { link_weights: link_weights.to_vec(), link_vals: vec![], links: link_weights.len(), err_sig: None, correct_answer: None, cached_output: None, category: None, b_weight }
+    }
+
     fn input(&mut self) -> Option<f32> {
         let mut sum: f32 = 0.00;
         for i in 0..self.links {
