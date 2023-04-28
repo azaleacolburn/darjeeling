@@ -374,7 +374,7 @@ impl NeuralNetwork {
         
         let mut rng = rand::thread_rng();
         let file_num: u32 = rng.gen();
-        let name: String = format!("model{:?}.darj", file_num);
+        let name: String = format!("model{}.darj", file_num);
 
         match Path::new(&name).try_exists() {
 
@@ -386,11 +386,17 @@ impl NeuralNetwork {
                 //     }
                 // }
                 // let serialized: String = serde_json::to_string(&self).unwrap();
+                
                 let mut serialized = "".to_string();
                 for i in 0..self.node_array.len() {
+                    let _ = &serialized.push_str("lb");
                     for j in 0..self.node_array[i].len() {
-                        let _ = &serialized.push_str(format!("l {:?}", fix_string(&mut format!("{:?}", self.node_array[i][j].link_weights))).as_str());
-                        let _ = &serialized.push_str(format!(", {};", self.node_array[i][j].b_weight.unwrap().to_string()).as_str()); 
+                        for k in 0..self.node_array[i][j].link_weights.len() {
+                            print!("{}", self.node_array[i][j].link_weights[k]);
+                            let _ = &serialized.push_str(format!(", {}", &mut format!("{}", self.node_array[i][j].link_weights[k])).as_str());
+                        }
+                        let _ = &serialized.push_str(format!("; {}", self.node_array[i][j].b_weight.unwrap().to_string()).as_str()); 
+                        let _ = &serialized.push_str("\n");
                     }
                 }
                 println!("Serialized: {:?}", serialized);
@@ -471,12 +477,4 @@ impl NeuralNetwork {
 
         Ok(net)
     }
-}
-
-fn fix_string(str: &mut String) -> &str {
-
-    str.remove(0);
-    str.remove(str.len());
-
-    str.as_str()
 }
