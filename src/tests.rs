@@ -5,8 +5,8 @@ use crate::{input::Input, DEBUG, categorize::NeuralNetwork, dataframe::{DataFram
 #[test]
 fn train_test_xor() {
     let learning_rate:f32 = 0.5;
-    let categories = categories_str_format(vec!["1","0"]);
-    let data = xor_file();
+    let categories: Vec<Types> = categories_str_format(vec!["1","0"]);
+    let data: Vec<Input> = xor_file();
 
     // Panics!
     let model_name: String = train_network_xor(data.clone(), categories.clone(), learning_rate).unwrap();
@@ -15,7 +15,7 @@ fn train_test_xor() {
 }
 
 /// Returns None if the learn function returns an Err variant
-fn train_network_xor(mut data:Vec<Input>, categories: Vec<Types>, learning_rate: f32) -> Option<String> {
+fn train_network_xor(mut data: Vec<Input>, categories: Vec<Types>, learning_rate: f32) -> Option<String> {
     let input_num: i32 = 2;
     let hidden_num: i32 = 2;
     let answer_num: i32 = 2;

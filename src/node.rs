@@ -26,7 +26,12 @@ impl Node {
         let mut sum: f32 = 0.00;
         for i in 0..self.links {
             if DEBUG { println!("Link Val: {:?}", self.link_vals[i]); }
-            sum += self.link_vals[i].unwrap() * self.link_weights[i];
+            let val: f32 = match self.link_vals[i] {
+
+                Some(val) => val,
+                None => 0.00
+            };
+            sum += val * self.link_weights[i]
         }
 
         Some(sum + self.b_weight.unwrap())

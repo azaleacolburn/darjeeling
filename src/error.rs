@@ -20,7 +20,7 @@ impl<'a> fmt::Display for DarjeelingError<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             DarjeelingError::ColumnDoesNotExist(column) => write!(f, 
-                "{:?} isn't a vali column", 
+                "{:?} isn't a valid column", 
                 column
             ),
             DarjeelingError::RowDoesNotExist(row) => write!(f, 
