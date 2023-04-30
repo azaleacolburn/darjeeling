@@ -88,20 +88,20 @@ impl NeuralNetwork {
 
     /// Trains the neural network model to be able to categorize data in a dataset
     /// 
-    /// # Params
+    /// ## Params
     /// - Data: List of inputs
     /// - Categories: List of Strings, each denoting an answer category. 
     /// The number of answer nodes should be the same of the number of categories
     /// - Learning Rate: The modifier that is applied to link weights as they're adjusted.
     /// Try fiddling with this one, but -1.5 - 1.5 is recommended to start.
     /// 
-    /// # Returns
+    /// ## Returns
     /// The falable name of the model that this neural network trained
     /// 
-    /// # Err
+    /// ## Err
+    /// WriteModelFailed
     /// 
-    /// 
-    /// # Examples
+    /// ## Examples
     /// ```ignore
     /// use darjeeling::{categorize::NeuralNetwork, input::Input, tests::{categories_str_format, xor_file}};
     /// 
@@ -116,7 +116,6 @@ impl NeuralNetwork {
     /// let learning_rate = 1.0;
     /// let model_name = net.learn(&mut data, categories, learning_rate).unwrap();
     /// ```
-    /// 
     pub fn learn(&mut self, data: &mut Vec<Input>, categories: Vec<Types>, learning_rate: f32) -> Result<String, DarjeelingError> {
         let mut epochs: f32 = 0.0;
         let mut sum: f32 = 0.0;
@@ -206,7 +205,7 @@ impl NeuralNetwork {
 
         // let _old_err_percent = err_percent;
         let err_percent: f32 = (sum/count) * 100.0;
-        println!("Testing: Finished with accuracy of {:?}/{:?} or {:?} percentt", sum, count, err_percent);
+        println!("Testing: Finished with accuracy of {:?}/{:?} or {:?} percent", sum, count, err_percent);
 
         Ok(category.unwrap())
     }
@@ -262,14 +261,14 @@ impl NeuralNetwork {
     /// Also increments sum and count
     fn self_analysis<'b>(&'b self, epochs: &mut Option<f32>, sum: &'b mut f32, count: &'b mut f32, data: &mut Vec<Input>, line: usize) -> Types {
 
-        println!("answer {}", self.answer.unwrap());
-        println!("largest index {}", self.largest_node());
+        // println!("answer {}", self.answer.unwrap());
+        // println!("largest index {}", self.largest_node());
         // println!("{:?}", self);
         let brightest_node: &Node = &self.node_array[self.answer.unwrap()][self.largest_node()];
         let brightness: f32 = brightest_node.cached_output.unwrap();
 
         if !(epochs.is_none()) {
-            if epochs.unwrap() % 10.0 == 0.0 {
+            if epochs.unwrap() % 10.0 == 0.0 && epochs.unwrap() != 0.0 {
                 println!("\n-------------------------\n");
                 println!("Epoch: {:?}", epochs);
                 println!("Category: {:?} \nBrightness: {:?}", brightest_node.category.as_ref().unwrap(), brightness);
@@ -390,32 +389,39 @@ impl NeuralNetwork {
                 // let serialized: String = serde_json::to_string(&self).unwrap();
                 
                 let mut serialized = "".to_string();
-                for node in 0..self.node_array[0].len() {
-                    for k in 0..self.node_array[0][node].link_weights.len() {
-                        if k == self.node_array[0][node].link_weights.len() - 1 {
-                            let _ = &serialized.push_str(format!("{}", self.node_array[0][node].link_weights[k]).as_str());
-                        } else {
-                            let _ = &serialized.push_str(format!("{},", self.node_array[0][node].link_weights[k]).as_str());
-                        }
+                // println!("len {}", self.node_array[0].len());
+                // for node in 0..self.node_array[0].len() {
+                //     print!("node: {}", node);
+                //     for k in 0..self.node_array[0][node].link_weights.len() {
+                //         println!("in weight: {}", self.node_array[0][node].link_weights[k]);
+                //         if k == self.node_array[0][node].link_weights.len() - 1 {
+                //             println!("input last {}", format!("{}", self.node_array[0][node].link_weights[k]).as_str());
+                //             let _ = serialized.push_str(format!("{}", self.node_array[0][node].link_weights[k]).as_str());
+                //         } else {
+                //             println!("input {}", format!("{}", self.node_array[0][node].link_weights[k]).as_str());
+                //             let _ = serialized.push_str(format!("{},", self.node_array[0][node].link_weights[k]).as_str());
+                //         }
+                //     }
+                // }
+                for i in 0..self.node_array.len() {
+                    if i != 0 {
+                        let _ = serialized.push_str("lb\n");
                     }
-                }
-                for i in 1..self.node_array.len() {
-                    let _ = &serialized.push_str("lb\n");
                     for j in 0..self.node_array[i].len() {
                         for k in 0..self.node_array[i][j].link_weights.len() {
                             print!("{}", self.node_array[i][j].link_weights[k]);
                             if k == self.node_array[i][j].link_weights.len() - 1 {
-                                let _ = &serialized.push_str(format!("{}", self.node_array[i][j].link_weights[k]).as_str());
+                                let _ = serialized.push_str(format!("{}", self.node_array[i][j].link_weights[k]).as_str());
                             } else {
-                                let _ = &serialized.push_str(format!("{},", self.node_array[i][j].link_weights[k]).as_str());
+                                let _ = serialized.push_str(format!("{},", self.node_array[i][j].link_weights[k]).as_str());
                             }                        
                         }
-                        let _ = &serialized.push_str(format!(";{}", self.node_array[i][j].b_weight.unwrap().to_string()).as_str()); 
-                        let _ = &serialized.push_str("\n");
+                        let _ = serialized.push_str(format!(";{}", self.node_array[i][j].b_weight.unwrap().to_string()).as_str()); 
+                        let _ = serialized.push_str("\n");
                     }
                 }
                 serialized.push_str("lb");
-                println!("Serialized: {:?}", serialized);
+                // println!("Serialized: {:?}", serialized);
                 match fs::write(&name, serialized) {
                     
                     Ok(()) => {
@@ -462,29 +468,38 @@ impl NeuralNetwork {
         let mut node_array: Vec<Vec<Node>> = vec![];
         let mut layer: Vec<Node> = vec![];
         for i in serialized_net.lines() {
-
             if i.trim() == "lb" {
                 node_array.push(layer.clone());
-                println!("pushed layer {:?}", layer.clone());
+                // println!("pushed layer {:?}", layer.clone());
                 layer = vec![];
                 continue;
             }
-            let node_data: Vec<&str> = i.trim().split(";").collect();
-            let str_weight_array: Vec<&str> = node_data[0].split(",").collect();
-            let mut weight_array: Vec<f32> = vec![];
-            let b_weight: &str = node_data[1];
-            for i in 0..str_weight_array.len() {
-                // print!("testing here {}", str_weight_array[i]);
-                let val = str_weight_array[i].parse().unwrap();
-                weight_array.push(val);
+            #[allow(unused_mut)]
+            let mut node: Option<Node>;
+            if node_array.len() == 0 {
+                let b_weight: Vec<&str> = i.split(";").collect();
+                // println!("b_weight: {:?}", b_weight);
+                node = Some(Node::new(&vec![], Some(b_weight[1].parse().unwrap())));
+            } else {
+                let node_data: Vec<&str> = i.trim().split(";").collect();
+                let str_weight_array: Vec<&str> = node_data[0].split(",").collect();
+                let mut weight_array: Vec<f32> = vec![];
+                let b_weight: &str = node_data[1];
+                // println!("node_data: {:?}", node_data);
+                // println!("array {:?}", str_weight_array);
+                for weight in 0..str_weight_array.len() {
+                    // println!("testing here {:?}", str_weight_array[weight]);
+                    let val: f32 = str_weight_array[weight].parse().unwrap();
+                    weight_array.push(val);
+                }
+                // print!("{}", b_weight);
+                node = Some(Node::new(&weight_array, Some(b_weight.parse().unwrap()) ));
             }
-            // print!("{}", b_weight);
             
-            let node = Node::new(&weight_array, Some(b_weight.parse().unwrap()) );
-            layer.push(node);
-            println!("layer: {:?}", layer.clone())
+            layer.push(node.expect("Both cases provide a Some value for node"));
+            // println!("layer: {:?}", layer.clone())
         }
-        println!("node array size {}", node_array.len());
+        // println!("node array size {}", node_array.len());
         let sensor: Option<usize> = Some(0);
         let answer: Option<usize> = Some(node_array.len() - 1);
         
@@ -494,7 +509,7 @@ impl NeuralNetwork {
             answer,
             parameters: None
         };
-        println!("node array {:?}", net.node_array);
+        // println!("node array {:?}", net.node_array);
 
         Ok(net)
     }

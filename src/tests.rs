@@ -4,11 +4,11 @@ use crate::{input::Input, DEBUG, categorize::NeuralNetwork, dataframe::{DataFram
 
 #[test]
 pub fn train_test_xor() {
-    let learning_rate:f32 = 5.0;
+    let learning_rate:f32 = 3.0;
     let categories: Vec<Types> = categories_str_format(vec!["1","0"]);
     let data: Vec<Input> = xor_file();
 
-    // Panics!
+    // Panics if unwraps a None value
     let model_name: String = train_network_xor(data.clone(), categories.clone(), learning_rate).unwrap();
 
     NeuralNetwork::test(data, categories, model_name).unwrap();
