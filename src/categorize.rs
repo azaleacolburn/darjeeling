@@ -5,7 +5,6 @@ use crate::{
     node::Node,
     input::Input
 };
-
 use std::{fs, path::Path};
 use serde::{Deserialize, Serialize};
 use rand::{Rng, seq::SliceRandom, thread_rng};
@@ -263,6 +262,9 @@ impl NeuralNetwork {
     /// Also increments sum and count
     fn self_analysis<'b>(&'b self, epochs: &mut Option<f32>, sum: &'b mut f32, count: &'b mut f32, data: &mut Vec<Input>, line: usize) -> Types {
 
+        println!("answer {}", self.answer.unwrap());
+        println!("largest index {}", self.largest_node());
+        // println!("{:?}", self);
         let brightest_node: &Node = &self.node_array[self.answer.unwrap()][self.largest_node()];
         let brightness: f32 = brightest_node.cached_output.unwrap();
 
@@ -390,7 +392,6 @@ impl NeuralNetwork {
                 let mut serialized = "".to_string();
                 for node in 0..self.node_array[0].len() {
                     for k in 0..self.node_array[0][node].link_weights.len() {
-                        print!("{}", self.node_array[0][node].link_weights[k]);
                         if k == self.node_array[0][node].link_weights.len() - 1 {
                             let _ = &serialized.push_str(format!("{}", self.node_array[0][node].link_weights[k]).as_str());
                         } else {
@@ -413,6 +414,7 @@ impl NeuralNetwork {
                         let _ = &serialized.push_str("\n");
                     }
                 }
+                serialized.push_str("lb");
                 println!("Serialized: {:?}", serialized);
                 match fs::write(&name, serialized) {
                     
@@ -458,11 +460,13 @@ impl NeuralNetwork {
         };
  
         let mut node_array: Vec<Vec<Node>> = vec![];
+        let mut layer: Vec<Node> = vec![];
         for i in serialized_net.lines() {
-            let mut layer: Vec<Node> = vec![];
 
             if i.trim() == "lb" {
-                node_array.push(layer);
+                node_array.push(layer.clone());
+                println!("pushed layer {:?}", layer.clone());
+                layer = vec![];
                 continue;
             }
             let node_data: Vec<&str> = i.trim().split(";").collect();
@@ -477,10 +481,12 @@ impl NeuralNetwork {
             // print!("{}", b_weight);
             
             let node = Node::new(&weight_array, Some(b_weight.parse().unwrap()) );
-                layer.push(node); 
+            layer.push(node);
+            println!("layer: {:?}", layer.clone())
         }
-        let sensor: Option<usize> = Some(node_array[0].len());
-        let answer: Option<usize> = Some(node_array[node_array.len() - 1].len());
+        println!("node array size {}", node_array.len());
+        let sensor: Option<usize> = Some(0);
+        let answer: Option<usize> = Some(node_array.len() - 1);
         
         let net = NeuralNetwork {
             node_array,
@@ -488,6 +494,7 @@ impl NeuralNetwork {
             answer,
             parameters: None
         };
+        println!("node array {:?}", net.node_array);
 
         Ok(net)
     }

@@ -3,8 +3,8 @@ use std::{io::{BufReader, BufRead}, fs};
 use crate::{input::Input, DEBUG, categorize::NeuralNetwork, dataframe::{DataFrame, Point}, series::Series, types::{Types, self}};
 
 #[test]
-fn train_test_xor() {
-    let learning_rate:f32 = 0.5;
+pub fn train_test_xor() {
+    let learning_rate:f32 = 5.0;
     let categories: Vec<Types> = categories_str_format(vec!["1","0"]);
     let data: Vec<Input> = xor_file();
 

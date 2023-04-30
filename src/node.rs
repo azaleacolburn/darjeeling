@@ -1,3 +1,4 @@
+
 #[allow(dead_code)]
 use serde::{Deserialize, Serialize};
 use crate::{DEBUG, types::Types};
@@ -19,7 +20,12 @@ impl Node {
 
     pub fn new(link_weights: &Vec<f32>, b_weight: Option<f32>) -> Node {
 
-        Node { link_weights: link_weights.to_vec(), link_vals: vec![], links: link_weights.len(), err_sig: None, correct_answer: None, cached_output: None, category: None, b_weight }
+        let mut link_vals: Vec<Option<f32>> = vec![];
+        for _i in 0..link_weights.len() {
+            link_vals.push(None);
+        }
+
+        Node { link_weights: link_weights.to_vec(), link_vals, links: link_weights.len(), err_sig: None, correct_answer: None, cached_output: None, category: None, b_weight }
     }
 
     fn input(&mut self) -> Option<f32> {
