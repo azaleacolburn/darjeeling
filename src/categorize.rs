@@ -4,7 +4,7 @@ use crate::{
     types::Types,
     node::Node,
     input::Input,
-    activation::{ActivationFunction}
+    activation::ActivationFunction
 };
 use std::{fs, path::Path};
 use serde::{Deserialize, Serialize};

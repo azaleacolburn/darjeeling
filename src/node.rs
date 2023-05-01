@@ -17,7 +17,7 @@ pub struct Node {
 }
 
 impl Node {
-
+    
     pub fn new(link_weights: &Vec<f32>, b_weight: Option<f32>) -> Node {
 
         let mut link_vals: Vec<Option<f32>> = vec![];

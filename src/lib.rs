@@ -26,3 +26,4 @@ pub mod activation;
 pub mod types;
 #[cfg(test)]
 pub mod tests;
+pub mod generation;
