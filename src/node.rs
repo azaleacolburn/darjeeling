@@ -1,7 +1,7 @@
 
 #[allow(dead_code)]
 use serde::{Deserialize, Serialize};
-use crate::{DEBUG, types::Types, activation::{self, ActivationFunction}};
+use crate::{DEBUG, types::Types, activation::ActivationFunction};
 
 /// Represents a node in the network
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

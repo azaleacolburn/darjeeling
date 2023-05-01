@@ -177,4 +177,4 @@ Expected Output:
 ```
 
 # TODO:
-Right now storing models with serialization is super unoptimized, since all fields of the saved neural network that aren't parameters are just set to None, then written to the file! Fixing this could be helpful
+Right now only categorization neural models are supported. Support for generative models could be cool
