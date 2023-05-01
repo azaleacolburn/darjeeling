@@ -3,7 +3,8 @@ use crate::{
     error::DarjeelingError,
     types::Types,
     node::Node,
-    input::Input
+    input::Input,
+    activation::{ActivationFunction}
 };
 use std::{fs, path::Path};
 use serde::{Deserialize, Serialize};
@@ -16,7 +17,8 @@ pub struct NeuralNetwork {
     node_array: Vec<Vec<Node>>,
     sensor: Option<usize>,
     answer: Option<usize>,
-    parameters: Option<u128>
+    parameters: Option<u128>,
+    activation_function: ActivationFunction
 }
 
 impl NeuralNetwork {
@@ -33,16 +35,19 @@ impl NeuralNetwork {
     /// 
     /// ## Examples
     /// ``` rust
-    /// use darjeeling::categorize::NeuralNetwork;
+    /// use darjeeling::{
+    /// activation::ActivationFunction,
+    /// categorize::NeuralNetwork
+    /// };
     /// 
     /// let inputs: i32 = 10;
     /// let hidden: i32 = 40;
     /// let answer: i32 = 2;
     /// let hidden_layers: i32 = 1;
-    /// let mut net: NeuralNetwork = NeuralNetwork::new(inputs, hidden, answer, hidden_layers);
+    /// let mut net: NeuralNetwork = NeuralNetwork::new(inputs, hidden, answer, hidden_layers, ActivationFunction::Sigmoid);
     /// ```
-    pub fn new(input_num: i32, hidden_num: i32, answer_num: i32, hidden_layers: i32) -> NeuralNetwork {
-        let mut net: NeuralNetwork = NeuralNetwork { node_array: vec![], sensor: Some(0), answer: Some(hidden_layers as usize + 1), parameters: None};
+    pub fn new(input_num: i32, hidden_num: i32, answer_num: i32, hidden_layers: i32, activation_function: ActivationFunction) -> NeuralNetwork {
+        let mut net: NeuralNetwork = NeuralNetwork { node_array: vec![], sensor: Some(0), answer: Some(hidden_layers as usize + 1), parameters: None, activation_function};
         let mut rng = rand::thread_rng();
         net.node_array.push(vec![]);    
         for _i in 0..input_num {
@@ -99,24 +104,44 @@ impl NeuralNetwork {
     /// The falable name of the model that this neural network trained
     /// 
     /// ## Err
-    /// WriteModelFailed
+    /// - ### WriteModelFailed
+    /// There was a problem when saving the model to a file
+    /// - ### ModelNameAlreadyExists
+    /// The random model name chosen already exists
+    /// 
+    /// Change the name or retrain
+    /// - ### UnknownError
+    /// Not sure what happened, but something failed
+    /// 
+    /// Make an issue on the [darjeeling](https://github.com/Ewie21/darjeeling) github page
+    /// 
+    /// Or contact me at elocolburn@comcast.net
     /// 
     /// ## Examples
     /// ```ignore
-    /// use darjeeling::{categorize::NeuralNetwork, input::Input, tests::{categories_str_format, xor_file}};
+    /// use darjeeling::{
+    /// categorize::NeuralNetwork,
+    /// activation::ActivationFunction,
+    /// input::Input, 
+    /// // This file may not be avaliable
+    /// // Everything found here will be hyper-specific to your project.
+    /// tests::{categories_str_format, xor_file}
+    /// };
     /// 
-    /// let categories: Vec<String> = categories_str_format(vec!["0", "1"]);
     /// // A file containing all possible inputs and correct outputs still needs to be make by you
     /// // 0 0;0
     /// // 0 1;1
     /// // 1 0;1
     /// // 1 1;0
+    /// // You also need to write the file input function
+    /// // Automatic file reading and formatting function coming soon
+    /// let categories: Vec<String> = categories_str_format(vec!["0", "1"]);
     /// let mut data: Vec<Input> = xor_file();
-    /// let mut net = NeuralNetwork::new(2, 2, 2, 1);
+    /// let mut net = NeuralNetwork::new(2, 2, 2, 1, ActivationFunction::Sigmoid);
     /// let learning_rate = 1.0;
-    /// let model_name = net.learn(&mut data, categories, learning_rate).unwrap();
+    /// let model_name = net.learn(&mut data, categories, learning_rate, "xor").unwrap();
     /// ```
-    pub fn learn(&mut self, data: &mut Vec<Input>, categories: Vec<Types>, learning_rate: f32) -> Result<String, DarjeelingError> {
+    pub fn learn(&mut self, data: &mut Vec<Input>, categories: Vec<Types>, learning_rate: f32, name: &str) -> Result<String, DarjeelingError> {
         let mut epochs: f32 = 0.0;
         let mut sum: f32 = 0.0;
         let mut count: f32 = 0.0;
@@ -154,11 +179,11 @@ impl NeuralNetwork {
 
         }
         #[allow(unused_mut)]
-        let mut name: String;
-        match self.write_model() {
+        let mut model_name: String;
+        match self.write_model(&name) {
 
-            Ok(model_name) => {
-                name = model_name;
+            Ok(m_name) => {
+                model_name = m_name;
             },
 
             Err(error) => return Err(error)
@@ -166,7 +191,7 @@ impl NeuralNetwork {
 
         println!("Training: Finished with accuracy of {:?}/{:?} or {:?} percent after {:?} epochs", sum, count, err_percent, epochs);
 
-        Ok(name)
+        Ok(model_name)
     }
 
     /// Tests a pretrained model
@@ -249,10 +274,10 @@ impl NeuralNetwork {
                     // self.node_array[layer][node].link_vals.push(self.node_array[layer-1][prev_node].cached_output.unwrap());
                     self.node_array[layer][node].link_vals[prev_node] = Some(self.node_array[layer-1][prev_node].cached_output.unwrap());
                     // I think this line needs to be un-commented
-                    self.node_array[layer][node].output();
+                    self.node_array[layer][node].output(&self.activation_function);
                     if DEBUG { if layer == self.answer.unwrap() { println!("Ran output on answer {:?}", self.node_array[layer][node].cached_output) } }
                 }
-                self.node_array[layer][node].output();
+                self.node_array[layer][node].output(&self.activation_function);
             }
         }
     }
@@ -371,11 +396,11 @@ impl NeuralNetwork {
     /// ### ModelNameAlreadyExists: Wraps the potential model name
     /// ### UnknownError: Wraps error
     ///  
-    pub fn write_model(&mut self) -> Result<String, DarjeelingError> {
+    pub fn write_model(&mut self, name: &str) -> Result<String, DarjeelingError> {
         
         let mut rng = rand::thread_rng();
         let file_num: u32 = rng.gen();
-        let name: String = format!("model{}.darj", file_num);
+        let model_name: String = format!("model{}{}.darj", name, file_num);
 
         match Path::new(&name).try_exists() {
 
@@ -420,25 +445,26 @@ impl NeuralNetwork {
                         let _ = serialized.push_str("\n");
                     }
                 }
-                serialized.push_str("lb");
+                serialized.push_str("lb\n");                    
+                serialized.push_str(format!("{}", self.activation_function).as_str());
                 // println!("Serialized: {:?}", serialized);
                 match fs::write(&name, serialized) {
                     
                     Ok(()) => {
                         println!("Model {:?} Saved", file_num);
 
-                        Ok(name)
+                        Ok(model_name)
                     },
 
                     Err(_error) => {
 
-                        Err(DarjeelingError::WriteModelFailed(name))
+                        Err(DarjeelingError::WriteModelFailed(model_name))
                     }
                 }
             },
             Ok(true) => {
                 
-                Err(DarjeelingError::ModelNameAlreadyExists(name))
+                Err(DarjeelingError::ModelNameAlreadyExists(model_name))
             },
             Err(error) => Err(DarjeelingError::UnknownError(error))
         }
@@ -467,37 +493,52 @@ impl NeuralNetwork {
  
         let mut node_array: Vec<Vec<Node>> = vec![];
         let mut layer: Vec<Node> = vec![];
+        let mut activation: ActivationFunction = ActivationFunction::Catcher;
         for i in serialized_net.lines() {
-            if i.trim() == "lb" {
-                node_array.push(layer.clone());
-                // println!("pushed layer {:?}", layer.clone());
-                layer = vec![];
-                continue;
-            }
-            #[allow(unused_mut)]
-            let mut node: Option<Node>;
-            if node_array.len() == 0 {
-                let b_weight: Vec<&str> = i.split(";").collect();
-                // println!("b_weight: {:?}", b_weight);
-                node = Some(Node::new(&vec![], Some(b_weight[1].parse().unwrap())));
-            } else {
-                let node_data: Vec<&str> = i.trim().split(";").collect();
-                let str_weight_array: Vec<&str> = node_data[0].split(",").collect();
-                let mut weight_array: Vec<f32> = vec![];
-                let b_weight: &str = node_data[1];
-                // println!("node_data: {:?}", node_data);
-                // println!("array {:?}", str_weight_array);
-                for weight in 0..str_weight_array.len() {
-                    // println!("testing here {:?}", str_weight_array[weight]);
-                    let val: f32 = str_weight_array[weight].parse().unwrap();
-                    weight_array.push(val);
+            match i {
+                "sigmoid" => activation = ActivationFunction::Sigmoid,
+
+                "linear" => activation = ActivationFunction::Linear,
+
+                "tanh" => activation = ActivationFunction::Tanh,
+
+                "step" => activation = ActivationFunction::Step,
+
+                _ => {
+                
+                    if i.trim() == "lb" {
+                        node_array.push(layer.clone());
+                        // println!("pushed layer {:?}", layer.clone());
+                        layer = vec![];
+                        continue;
+                    }
+                    #[allow(unused_mut)]
+                    let mut node: Option<Node>;
+                    if node_array.len() == 0 {
+                        let b_weight: Vec<&str> = i.split(";").collect();
+                        // println!("b_weight: {:?}", b_weight);
+                        node = Some(Node::new(&vec![], Some(b_weight[1].parse().unwrap())));
+                    } else {
+                        let node_data: Vec<&str> = i.trim().split(";").collect();
+                        let str_weight_array: Vec<&str> = node_data[0].split(",").collect();
+                        let mut weight_array: Vec<f32> = vec![];
+                        let b_weight: &str = node_data[1];
+                        // println!("node_data: {:?}", node_data);
+                        // println!("array {:?}", str_weight_array);
+                        for weight in 0..str_weight_array.len() {
+                            // println!("testing here {:?}", str_weight_array[weight]);
+                            let val: f32 = str_weight_array[weight].parse().unwrap();
+                            weight_array.push(val);
+                        }
+                        // print!("{}", b_weight);
+                        node = Some(Node::new(&weight_array, Some(b_weight.parse().unwrap()) ));
+                    }
+                    
+                    layer.push(node.expect("Both cases provide a Some value for node"));
+                    // println!("layer: {:?}", layer.clone())
                 }
-                // print!("{}", b_weight);
-                node = Some(Node::new(&weight_array, Some(b_weight.parse().unwrap()) ));
             }
             
-            layer.push(node.expect("Both cases provide a Some value for node"));
-            // println!("layer: {:?}", layer.clone())
         }
         // println!("node array size {}", node_array.len());
         let sensor: Option<usize> = Some(0);
@@ -507,7 +548,8 @@ impl NeuralNetwork {
             node_array,
             sensor,
             answer,
-            parameters: None
+            parameters: None,
+            activation_function: activation
         };
         // println!("node array {:?}", net.node_array);
 

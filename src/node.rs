@@ -1,7 +1,7 @@
 
 #[allow(dead_code)]
 use serde::{Deserialize, Serialize};
-use crate::{DEBUG, types::Types};
+use crate::{DEBUG, types::Types, activation::{self, ActivationFunction}};
 
 /// Represents a node in the network
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -28,7 +28,7 @@ impl Node {
         Node { link_weights: link_weights.to_vec(), link_vals, links: link_weights.len(), err_sig: None, correct_answer: None, cached_output: None, category: None, b_weight }
     }
 
-    fn input(&mut self) -> Option<f32> {
+    fn input(&mut self) -> f32 {
         let mut sum: f32 = 0.00;
         for i in 0..self.links {
             if DEBUG { println!("Link Val: {:?}", self.link_vals[i]); }
@@ -40,11 +40,22 @@ impl Node {
             sum += val * self.link_weights[i]
         }
 
-        Some(sum + self.b_weight.unwrap())
+        sum + self.b_weight.unwrap()
     }
 
-    pub fn output(&mut self) -> f32 {
-        self.cached_output = Some(Node::sigmoid(self.input().unwrap()));
+    pub fn output(&mut self, activation: &ActivationFunction) -> f32 {
+        self.cached_output = Some(match *activation 
+        {
+            ActivationFunction::Sigmoid => Node::sigmoid(self.input()),
+
+            ActivationFunction::Linear => Node::linear(self.input()),
+
+            ActivationFunction::Tanh => Node::tanh(self.input()),
+
+            ActivationFunction::Step => Node::step(self.input()),
+
+            ActivationFunction::Catcher => panic!("No valid activation function")
+        });
         
         self.cached_output.unwrap()
     }

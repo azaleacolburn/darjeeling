@@ -1,6 +1,14 @@
 use core::panic;
 use std::{io::{BufReader, BufRead}, fs};
-use crate::{input::Input, DEBUG, categorize::NeuralNetwork, dataframe::{DataFrame, Point}, series::Series, types::{Types, self}};
+use crate::{
+    input::Input, 
+    DEBUG, 
+    categorize::NeuralNetwork, 
+    dataframe::{DataFrame, Point}, 
+    series::Series, 
+    types::{Types, self},
+    activation::ActivationFunction
+};
 
 #[test]
 pub fn train_test_xor() {
@@ -20,9 +28,9 @@ fn train_network_xor(mut data: Vec<Input>, categories: Vec<Types>, learning_rate
     let hidden_num: i32 = 2;
     let answer_num: i32 = 2;
     let hidden_layers: i32 = 1;
-    let mut net: NeuralNetwork = NeuralNetwork::new(input_num, hidden_num, answer_num, hidden_layers);
+    let mut net: NeuralNetwork = NeuralNetwork::new(input_num, hidden_num, answer_num, hidden_layers, ActivationFunction::Sigmoid);
 
-    match net.learn(&mut data, categories, learning_rate) {
+    match net.learn(&mut data, categories, learning_rate, "xor") {
 
         Ok(result) => Some(result),
 
@@ -79,9 +87,9 @@ fn train_test_digits() {
 /// # Panics
 /// If the learn function returns an Err
 fn train_network_digits(mut data: Vec<Input>, categories: Vec<Types>, learning_rate: f32) -> Option<String> {
-    let mut net = NeuralNetwork::new(64, 128, 10, 1);
+    let mut net = NeuralNetwork::new(64, 128, 10, 1, ActivationFunction::Sigmoid);
 
-    match net.learn(&mut data, categories, learning_rate) {
+    match net.learn(&mut data, categories, learning_rate, "digits") {
 
         Ok(net) => Some(net),
 
