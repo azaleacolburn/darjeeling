@@ -1,7 +1,15 @@
 use rand::{Rng, seq::SliceRandom, thread_rng};
 use serde::{Serialize, Deserialize};
 
-use crate::{categorize, node::Node, activation::ActivationFunction, DEBUG, error::DarjeelingError, input::Input};
+use crate::{
+    categorize, 
+    node::Node, 
+    activation::ActivationFunction, 
+    DEBUG, 
+    error::DarjeelingError,
+    input::Input, 
+    types::Types, 
+};
 
 /// The top-level neural network struct
 /// sensor and answer represents which layer sensor and answer are on
@@ -92,10 +100,10 @@ impl NeuralNetwork {
         let mut epochs: f32 = 0.0;
         let hidden_layers = self.node_array.len() - 2;
 
-        let distinguishing_model = categorize::NeuralNetwork::new(8, 64, 2, 1, ActivationFunction::Sigmoid);
-
-        let mut outputs: Vec<Vec<f32>> = vec![];
-        for i in 0..100 {
+        let mut distinguishing_model = &categorize::NeuralNetwork::new(8, 64, 2, 1, ActivationFunction::Sigmoid);
+        let mut model_name: Option<String> = None;
+        let mut outputs: Vec<Input> = vec![];
+        for _i in 0..100 {
 
             data.shuffle(&mut thread_rng());
 
@@ -108,10 +116,38 @@ impl NeuralNetwork {
                 for i in 0..self.node_array[self.answer.unwrap()].len() {
                     output.push(self.node_array[self.answer.unwrap()][i].output(&self.activation_function));
                 }
-                outputs.push(output);
+                outputs.push(Input::new(output, Types::Boolean(false)));
             }
-            distinguishing_model.learn(outputs, categories, learning_rate, name)
-            self.backpropogate(learning_rate, hidden_layers as i32, &distinguishing_model);
+            if model_name.is_some() {
+                let new_model = categorize::NeuralNetwork::read_model(model_name.unwrap()).unwrap();
+                model_name = match new_model.learn(
+                    &mut outputs, 
+                    vec![Types::Boolean(true), Types::Boolean(false)], 
+                    learning_rate, name) 
+                    {
+                        Ok(name) => Some(name.0),
+                        Err(error) => return Err(error.clone())
+                    };
+                distinguishing_model = new_model.as_ref().unwrap();
+            } else {
+                let mut new_model = categorize::NeuralNetwork::read_model(model_name.unwrap()).unwrap();
+                model_name = match new_model.learn(data, vec![Types::Boolean(true), Types::Boolean(false)], learning_rate, name) {
+                    Ok(name) => Some(name.0),
+                    Err(error) => return Err(error)
+                };
+                distinguishing_model = &new_model;
+            }
+
+            // model_name: (String, f32) = match distinguishing_model.learn(
+            //         &mut outputs, 
+            //         vec![Types::Boolean(true), Types::Boolean(false)], 
+            //         learning_rate, name) 
+            // {
+            //     Ok(name) => name,
+            //     Err(error) => return Err(error)
+            // };
+            
+            self.backpropogate(learning_rate, hidden_layers as i32);
 
             // let _old_err_percent = err_percent;
             epochs += 1.0;
@@ -175,7 +211,7 @@ impl NeuralNetwork {
         largest_node
     }
     /// Goes back through the network adjusting the weights of the all the neurons based on their error signal
-    fn backpropogate(&mut self, learning_rate: f32, hidden_layers: i32, distinguishing_model: &categorize::NeuralNetwork) {
+    fn backpropogate(&mut self, learning_rate: f32, hidden_layers: i32) {
 
         for answer in 0..self.node_array[self.answer.unwrap()].len() {
             if DEBUG { println!("Node: {:?}", self.node_array[self.answer.unwrap()][answer]); }

@@ -6,13 +6,13 @@ use crate::{
     input::Input,
     activation::ActivationFunction
 };
-use std::{fs, path::Path};
+use std::{fs, path::Path, ops::Deref};
 use serde::{Deserialize, Serialize};
 use rand::{Rng, seq::SliceRandom, thread_rng};
 
 /// The top-level neural network struct
 /// sensor and answer represents which layer sensor and answer are on
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct NeuralNetwork {
     node_array: Vec<Vec<Node>>,
     sensor: Option<usize>,
@@ -141,7 +141,7 @@ impl NeuralNetwork {
     /// let learning_rate = 1.0;
     /// let model_name = net.learn(&mut data, categories, learning_rate, "xor").unwrap();
     /// ```
-    pub fn learn(&mut self, data: &mut Vec<Input>, categories: Vec<Types>, learning_rate: f32, name: &str) -> Result<String, DarjeelingError> {
+    pub fn learn<'b>(&'b mut self, data: &mut Vec<Input>, categories: Vec<Types>, learning_rate: f32, name: &str) -> Result<(String, f32), DarjeelingError> {
         let mut epochs: f32 = 0.0;
         let mut sum: f32 = 0.0;
         let mut count: f32 = 0.0;
@@ -157,6 +157,7 @@ impl NeuralNetwork {
 
             for line in 0..data.len() {
                 if DEBUG { println!("Training Checkpoint One Passed") }
+                
                 self.assign_answers(data, line as i32);
 
                 self.push_downstream(data, line as i32);
@@ -191,7 +192,7 @@ impl NeuralNetwork {
 
         println!("Training: Finished with accuracy of {:?}/{:?} or {:?} percent after {:?} epochs", sum, count, err_percent, epochs);
 
-        Ok(model_name)
+        Ok((model_name, err_percent))
     }
 
     /// Tests a pretrained model
@@ -466,7 +467,7 @@ impl NeuralNetwork {
                 
                 Err(DarjeelingError::ModelNameAlreadyExists(model_name))
             },
-            Err(error) => Err(DarjeelingError::UnknownError(error))
+            Err(error) => Err(DarjeelingError::UnknownError(error.to_string()))
         }
     }
 
@@ -488,7 +489,7 @@ impl NeuralNetwork {
         let serialized_net: String = match fs::read_to_string(&model_name) {
             
             Ok(serizalized_net) => serizalized_net,
-            Err(error) => return Err(DarjeelingError::ReadModelFailed(model_name.clone(), error))
+            Err(error) => return Err(DarjeelingError::ReadModelFailed(model_name.clone() + ";" +  &error.to_string()))
         };
  
         let mut node_array: Vec<Vec<Node>> = vec![];
@@ -554,5 +555,11 @@ impl NeuralNetwork {
         // println!("node array {:?}", net.node_array);
 
         Ok(net)
+    }
+}
+
+impl<T> AsRef<T> for NeuralNetwork {
+    fn as_ref(&self) -> &T {
+        self.deref().as_ref()
     }
 }

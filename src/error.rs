@@ -1,19 +1,19 @@
 use core::fmt;
 use std::any::TypeId;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum DarjeelingError<'a> {
 
     ColumnDoesNotExist(&'a str), 
     RowDoesNotExist(&'a str),
     PointDoesNotExist((&'a str, &'a str)),
-    ReadModelFailed(String, std::io::Error),
+    ReadModelFailed(String),
     ReadModelFunctionFailed(String, Box<DarjeelingError<'a>>),
     WriteModelFailed(String),
     ModelNameAlreadyExists(String),
     InvalidFormatType(TypeId),
 
-    UnknownError(std::io::Error)
+    UnknownError(String)
 }
 
 impl<'a> fmt::Display for DarjeelingError<'a> {
@@ -31,9 +31,9 @@ impl<'a> fmt::Display for DarjeelingError<'a> {
                 "There is no point at row: {:?}, column: {:?}", 
                 row, column
             ),
-            DarjeelingError::ReadModelFailed(model_name, error) => write!(f,
+            DarjeelingError::ReadModelFailed(model_name) => write!(f,
                 "Unable to read model {:?}, \n Hint: Double check the model_name \n Error Message: {:?}",
-                model_name, error
+                model_name.split(";").collect::<Vec<&str>>()[0], model_name.split(";").collect::<Vec<&str>>()[1]
             ),
             DarjeelingError::ReadModelFunctionFailed(model_name,error ) => write!(f,
                 "The read model function failed on the model {:?} \n The error given by the ReadModelFunction was {:?}",

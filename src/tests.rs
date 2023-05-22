@@ -32,13 +32,13 @@ fn train_network_xor(mut data: Vec<Input>, categories: Vec<Types>, learning_rate
 
     match net.learn(&mut data, categories, learning_rate, "xor") {
 
-        Ok(result) => Some(result),
+        Ok((result, _err_percent)) => Some(result),
 
         Err(_err) => None
     }
 }
 
-// Read the file you want to and format it as Inputs
+/// Read the file you want to and format it as Inputs
 pub fn xor_file<'a>() -> Vec<Input> {
     let file = match fs::File::open("training_data/xor.txt") {
         Ok(file) => file,
@@ -91,7 +91,7 @@ fn train_network_digits(mut data: Vec<Input>, categories: Vec<Types>, learning_r
 
     match net.learn(&mut data, categories, learning_rate, "digits") {
 
-        Ok(net) => Some(net),
+        Ok((net, _err_percent)) => Some(net),
 
         Err(error) => panic!("{:?}", error)
     }

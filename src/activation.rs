@@ -1,7 +1,7 @@
 use core::fmt;
 use serde::{Serialize, Deserialize};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum ActivationFunction {
     
     Sigmoid,
