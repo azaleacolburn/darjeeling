@@ -3,7 +3,7 @@ use std::{io::{BufReader, BufRead}, fs};
 use crate::{
     input::Input, 
     DEBUG, 
-    categorize::NeuralNetwork, 
+    categorize, 
     dataframe::{DataFrame, Point}, 
     series::Series, 
     types::{Types, self},
@@ -19,8 +19,8 @@ pub fn train_test_xor() {
     // Panics if unwraps a None value
     let model_name: String = train_network_xor(data.clone(), categories.clone(), learning_rate).unwrap();
 
-    NeuralNetwork::test(data, categories, model_name).unwrap();
-}
+    categorize::NeuralNetwork::test(data, categories, model_name).unwrap();
+}   
 
 /// Returns None if the learn function returns an Err variant
 fn train_network_xor(mut data: Vec<Input>, categories: Vec<Types>, learning_rate: f32) -> Option<String> {
@@ -28,11 +28,11 @@ fn train_network_xor(mut data: Vec<Input>, categories: Vec<Types>, learning_rate
     let hidden_num: i32 = 2;
     let answer_num: i32 = 2;
     let hidden_layers: i32 = 1;
-    let mut net: NeuralNetwork = NeuralNetwork::new(input_num, hidden_num, answer_num, hidden_layers, ActivationFunction::Sigmoid);
+    let mut net = categorize::NeuralNetwork::new(input_num, hidden_num, answer_num, hidden_layers, ActivationFunction::Sigmoid);
 
     match net.learn(&mut data, categories, learning_rate, "xor") {
 
-        Ok((result, _err_percent)) => Some(result),
+        Ok((_new_net, model_name, _err_percent)) => Some(model_name),
 
         Err(_err) => None
     }
@@ -81,17 +81,17 @@ fn train_test_digits() {
 
     let model_name: String = train_network_digits(data.clone(), categories.clone(), learning_rate).unwrap();
 
-    NeuralNetwork::test(data, categories, model_name).unwrap();
+    categorize::NeuralNetwork::test(data, categories, model_name).unwrap();
 }
 
 /// # Panics
 /// If the learn function returns an Err
 fn train_network_digits(mut data: Vec<Input>, categories: Vec<Types>, learning_rate: f32) -> Option<String> {
-    let mut net = NeuralNetwork::new(64, 128, 10, 1, ActivationFunction::Sigmoid);
+    let mut net = categorize::NeuralNetwork::new(64, 128, 10, 1, ActivationFunction::Sigmoid);
 
     match net.learn(&mut data, categories, learning_rate, "digits") {
 
-        Ok((net, _err_percent)) => Some(net),
+        Ok((_new_net, model_name, _err_percent)) => Some(model_name),
 
         Err(error) => panic!("{:?}", error)
     }

@@ -12,6 +12,7 @@ pub enum DarjeelingError<'a> {
     WriteModelFailed(String),
     ModelNameAlreadyExists(String),
     InvalidFormatType(TypeId),
+    DisinguishingModel(String),
 
     UnknownError(String)
 }
@@ -50,6 +51,10 @@ impl<'a> fmt::Display for DarjeelingError<'a> {
             DarjeelingError::InvalidFormatType(type_id) => write!(f,
                 "We couldn't format this value because the type: {:?} wasn't valid",
                 type_id
+            ),
+            DarjeelingError::DisinguishingModel(err) => write!(f,
+                "Issue with distinguishing mode training: {}",
+                err
             ),
             DarjeelingError::UnknownError(error) => write!(f,
                 "Non-Darjeeling error encountered: \n {:?}",

@@ -8,11 +8,11 @@ use crate::{
     DEBUG, 
     error::DarjeelingError,
     input::Input, 
-    types::Types, 
+    types::Types::{Boolean, Integer, Float}, 
 };
 
 /// The top-level neural network struct
-/// sensor and answer represents which layer sensor and answer are on
+/// Sensor and answer represents which layer sensor and answer are on
 #[derive(Debug, Serialize, Deserialize)]
 pub struct NeuralNetwork {
     node_array: Vec<Vec<Node>>,
@@ -116,24 +116,24 @@ impl NeuralNetwork {
                 for i in 0..self.node_array[self.answer.unwrap()].len() {
                     output.push(self.node_array[self.answer.unwrap()][i].output(&self.activation_function));
                 }
-                outputs.push(Input::new(output, Types::Boolean(false)));
+                outputs.push(Input::new(output, Boolean(false)));
             }
             if model_name.is_some() {
-                let new_model = categorize::NeuralNetwork::read_model(model_name.unwrap()).unwrap();
+                let mut new_model = categorize::NeuralNetwork::read_model(model_name.unwrap()).unwrap();
                 model_name = match new_model.learn(
                     &mut outputs, 
-                    vec![Types::Boolean(true), Types::Boolean(false)], 
+                    vec![Boolean(true), Boolean(false)], 
                     learning_rate, name) 
                     {
-                        Ok(name) => Some(name.0),
-                        Err(error) => return Err(error.clone())
+                        Ok(name) => Some(name.1),
+                        Err(error) => return Err(DarjeelingError::DisinguishingModel(error))
                     };
-                distinguishing_model = new_model.as_ref().unwrap();
+                distinguishing_model = &new_model;
             } else {
                 let mut new_model = categorize::NeuralNetwork::read_model(model_name.unwrap()).unwrap();
-                model_name = match new_model.learn(data, vec![Types::Boolean(true), Types::Boolean(false)], learning_rate, name) {
-                    Ok(name) => Some(name.0),
-                    Err(error) => return Err(error)
+                model_name = match new_model.learn(data, vec![Boolean(true), Boolean(false)], learning_rate, name) {
+                    Ok(name) => Some(name.1),
+                    Err(error) => return Err(DarjeelingError::DisinguishingModel(error))
                 };
                 distinguishing_model = &new_model;
             }

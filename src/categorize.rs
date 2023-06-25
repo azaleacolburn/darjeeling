@@ -141,7 +141,7 @@ impl NeuralNetwork {
     /// let learning_rate = 1.0;
     /// let model_name = net.learn(&mut data, categories, learning_rate, "xor").unwrap();
     /// ```
-    pub fn learn<'b>(&'b mut self, data: &mut Vec<Input>, categories: Vec<Types>, learning_rate: f32, name: &str) -> Result<(String, f32), DarjeelingError> {
+    pub fn learn<'b>(&mut self, data: &mut Vec<Input>, categories: Vec<Types>, learning_rate: f32, name: &str) -> Result<(&mut Self, String, f32), String> {
         let mut epochs: f32 = 0.0;
         let mut sum: f32 = 0.0;
         let mut count: f32 = 0.0;
@@ -187,12 +187,12 @@ impl NeuralNetwork {
                 model_name = m_name;
             },
 
-            Err(error) => return Err(error)
+            Err(err) => return Err(format!("{}", err)),
         }
 
         println!("Training: Finished with accuracy of {:?}/{:?} or {:?} percent after {:?} epochs", sum, count, err_percent, epochs);
 
-        Ok((model_name, err_percent))
+        Ok((self, model_name, err_percent))
     }
 
     /// Tests a pretrained model
@@ -401,34 +401,13 @@ impl NeuralNetwork {
         
         let mut rng = rand::thread_rng();
         let file_num: u32 = rng.gen();
-        let model_name: String = format!("model{}{}.darj", name, file_num);
+        let model_name: String = format!("model_{}_{}.darj", name, file_num);
 
-        match Path::new(&name).try_exists() {
-
+        match Path::new(&model_name).try_exists() {
             Ok(false) => {
-                let _file: fs::File = fs::File::create(&name).unwrap();
-                // for i in 0..self.node_array.len() {
-                //     for j in 0..self.node_array[i].len() {
-                //         self.node_array[i][j].cached_output = None;
-                //     }
-                // }
-                // let serialized: String = serde_json::to_string(&self).unwrap();
-                
+                let _file: fs::File = fs::File::create(&model_name).unwrap();
                 let mut serialized = "".to_string();
-                // println!("len {}", self.node_array[0].len());
-                // for node in 0..self.node_array[0].len() {
-                //     print!("node: {}", node);
-                //     for k in 0..self.node_array[0][node].link_weights.len() {
-                //         println!("in weight: {}", self.node_array[0][node].link_weights[k]);
-                //         if k == self.node_array[0][node].link_weights.len() - 1 {
-                //             println!("input last {}", format!("{}", self.node_array[0][node].link_weights[k]).as_str());
-                //             let _ = serialized.push_str(format!("{}", self.node_array[0][node].link_weights[k]).as_str());
-                //         } else {
-                //             println!("input {}", format!("{}", self.node_array[0][node].link_weights[k]).as_str());
-                //             let _ = serialized.push_str(format!("{},", self.node_array[0][node].link_weights[k]).as_str());
-                //         }
-                //     }
-                // }
+
                 for i in 0..self.node_array.len() {
                     if i != 0 {
                         let _ = serialized.push_str("lb\n");
@@ -448,23 +427,20 @@ impl NeuralNetwork {
                 }
                 serialized.push_str("lb\n");                    
                 serialized.push_str(format!("{}", self.activation_function).as_str());
-                // println!("Serialized: {:?}", serialized);
-                match fs::write(&name, serialized) {
-                    
+                match fs::write(&model_name, serialized) {
                     Ok(()) => {
                         println!("Model {:?} Saved", file_num);
 
                         Ok(model_name)
                     },
-
                     Err(_error) => {
 
                         Err(DarjeelingError::WriteModelFailed(model_name))
                     }
                 }
             },
+
             Ok(true) => {
-                
                 Err(DarjeelingError::ModelNameAlreadyExists(model_name))
             },
             Err(error) => Err(DarjeelingError::UnknownError(error.to_string()))
@@ -555,11 +531,5 @@ impl NeuralNetwork {
         // println!("node array {:?}", net.node_array);
 
         Ok(net)
-    }
-}
-
-impl<T> AsRef<T> for NeuralNetwork {
-    fn as_ref(&self) -> &T {
-        self.deref().as_ref()
     }
 }
