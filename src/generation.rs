@@ -1,3 +1,4 @@
+use ascii_converter::decimals_to_string;
 use rand::{Rng, seq::SliceRandom, thread_rng};
 use serde::{Serialize, Deserialize};
 
@@ -8,7 +9,7 @@ use crate::{
     DEBUG, 
     error::DarjeelingError,
     input::Input, 
-    types::Types::{Boolean, Integer, Float}, 
+    types::{Types, Types::Boolean}, 
 };
 
 /// The top-level neural network struct
@@ -96,14 +97,12 @@ impl NeuralNetwork {
     // The distinguishing model has to revceive the generative images, then 'prove its worth' every epoch by training so that it can distinguish images.
     // Then the generative model adjusts accordingly
     // Then on the next epoch, the generative model generates more
-    pub fn learn(&mut self, data: &mut Vec<Input>, learning_rate: f32, name: &str) -> Result<String, DarjeelingError> {
+    pub fn learn(&mut self, data: &mut Vec<Input>, learning_rate: f32, name: &str, distinguising_learning_rate: f32, distinguising_hidden_neurons: i32, distinguising_hidden_layers: i32, distinguising_activation: ActivationFunction) -> Result<String, DarjeelingError> { // The self model should do the generation
         let mut epochs: f32 = 0.0;
         let hidden_layers = self.node_array.len() - 2;
-
-        let mut distinguishing_model = &categorize::NeuralNetwork::new(8, 64, 2, 1, ActivationFunction::Sigmoid);
         let mut model_name: Option<String> = None;
         let mut outputs: Vec<Input> = vec![];
-        for _i in 0..100 {
+        for _i in 0..100 { // arbitrary constant
 
             data.shuffle(&mut thread_rng());
 
@@ -116,10 +115,11 @@ impl NeuralNetwork {
                 for i in 0..self.node_array[self.answer.unwrap()].len() {
                     output.push(self.node_array[self.answer.unwrap()][i].output(&self.activation_function));
                 }
-                outputs.push(Input::new(output, Boolean(false)));
+                outputs.push(Input::new(output, Boolean(false))); // False indicates not real data
             }
             if model_name.is_some() {
                 let mut new_model = categorize::NeuralNetwork::read_model(model_name.unwrap()).unwrap();
+                data.append(&mut outputs);
                 model_name = match new_model.learn(
                     &mut outputs, 
                     vec![Boolean(true), Boolean(false)], 
@@ -128,14 +128,18 @@ impl NeuralNetwork {
                         Ok(name) => Some(name.1),
                         Err(error) => return Err(DarjeelingError::DisinguishingModel(error))
                     };
-                distinguishing_model = &new_model;
             } else {
-                let mut new_model = categorize::NeuralNetwork::read_model(model_name.unwrap()).unwrap();
-                model_name = match new_model.learn(data, vec![Boolean(true), Boolean(false)], learning_rate, name) {
-                    Ok(name) => Some(name.1),
-                    Err(error) => return Err(DarjeelingError::DisinguishingModel(error))
-                };
-                distinguishing_model = &new_model;
+                let mut new_model = categorize::NeuralNetwork::new(self.node_array[self.answer.unwrap()].len() as i32, distinguising_hidden_neurons, 2, distinguising_hidden_layers, distinguising_activation);
+                data.append(&mut outputs);
+                model_name = match new_model.learn(
+                    data, 
+                    vec![Boolean(true), Boolean(false)], 
+                    distinguising_learning_rate, 
+                    &("distinguishing".to_owned() + &name)) 
+                    {
+                        Ok((_net, name, _err_percent)) => Some(name),
+                        Err(error) => return Err(DarjeelingError::DisinguishingModel(error))
+                    };
             }
 
             // model_name: (String, f32) = match distinguishing_model.learn(
@@ -268,4 +272,70 @@ impl NeuralNetwork {
             }
         }
     }
+
+/// Not needed for now
+/// Analyses the chosen answer node's result.
+/// Also increments sum and count
+/// Err if string requested and float exceeds u8 limit (fix by parsing the floats and slicing them)
+fn self_analysis<'b>(&'b self, epochs: &mut Option<f32>, sum: &'b mut f32, count: &'b mut f32, data: &mut Vec<Input>, line: usize, expected_type: Types) -> Result<Vec<Types>, DarjeelingError> {
+
+    // println!("answer {}", self.answer.unwrap());
+    // println!("largest index {}", self.largest_node());
+    // println!("{:?}", self);
+    let brightest_node: &Node = &self.node_array[self.answer.unwrap()][self.largest_node()];
+    let brightness: f32 = brightest_node.cached_output.unwrap();
+
+    if !(epochs.is_none()) {
+        if epochs.unwrap() % 10.0 == 0.0 && epochs.unwrap() != 0.0 {
+            println!("\n-------------------------\n");
+            println!("Epoch: {:?}", epochs);
+            println!("Category: {:?} \nBrightness: {:?}", brightest_node.category.as_ref().unwrap(), brightness);
+            if DEBUG {
+                let dimest_node: &Node = &self.node_array[self.answer.unwrap()][self.node_array[self.answer.unwrap()].len()-1-self.largest_node()];
+                println!("Chosen category: {:?} \nDimest Brightness: {:?}", dimest_node.category.as_ref().unwrap(), dimest_node.cached_output.unwrap());
+            }
+        }
+    }
+
+    if DEBUG { println!("Category: {:?} \nBrightness: {:?}", brightest_node.category.as_ref().unwrap(), brightness); }
+    if brightest_node.category.as_ref().unwrap().eq(&data[line].answer) { println!("Correct Answer Chosen"); }
+
+    if brightest_node.category.as_ref().unwrap().eq(&data[line].answer) {
+        if DEBUG { println!("Sum++"); }
+        *sum += 1.0;
+    }
+    *count += 1.0;
+    let mut ret: Vec<Types> = vec![];
+    match expected_type {
+        Types::Integer(_) => {
+            for node in &self.node_array[self.answer.unwrap()] {
+                let int = node.cached_output.unwrap() as i32;
+                ret.push(Types::Integer(int));
+            }
+        }
+        Types::Boolean(_) => {
+            for node in &self.node_array[self.answer.unwrap()] {
+                let bool = node.cached_output.unwrap() > 0.0;
+                ret.push(Types::Boolean(bool));
+            }
+        }
+        Types::Float(_) => {
+            for node in &self.node_array[self.answer.unwrap()] {
+                ret.push(Types::Float(node.cached_output.unwrap()));
+            }
+        }
+        Types::String(_) => {
+            for node in &self.node_array[self.answer.unwrap()] {
+                let inputs = vec![(node.cached_output.unwrap() as u8)];
+                let buff = match decimals_to_string(&inputs) {
+                    Ok(val) => val,
+                    Err(err) => return Err(DarjeelingError::SelfAnalysisStringConversion(err))
+                };
+                ret.push(Types::String(buff));
+            }
+        }
+
+    };
+    Ok(ret)
+}
 }

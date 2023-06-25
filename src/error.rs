@@ -13,6 +13,7 @@ pub enum DarjeelingError<'a> {
     ModelNameAlreadyExists(String),
     InvalidFormatType(TypeId),
     DisinguishingModel(String),
+    SelfAnalysisStringConversion(String),
 
     UnknownError(String)
 }
@@ -54,6 +55,10 @@ impl<'a> fmt::Display for DarjeelingError<'a> {
             ),
             DarjeelingError::DisinguishingModel(err) => write!(f,
                 "Issue with distinguishing mode training: {}",
+                err
+            ),
+            DarjeelingError::SelfAnalysisStringConversion(err) => write!(f,
+                "Issue converting neural values to string (u8 limit exceeded). Full string support coming soon: Error message {}",
                 err
             ),
             DarjeelingError::UnknownError(error) => write!(f,

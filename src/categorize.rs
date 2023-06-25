@@ -6,7 +6,7 @@ use crate::{
     input::Input,
     activation::ActivationFunction
 };
-use std::{fs, path::Path, ops::Deref};
+use std::{fs, path::Path};
 use serde::{Deserialize, Serialize};
 use rand::{Rng, seq::SliceRandom, thread_rng};
 
@@ -404,10 +404,32 @@ impl NeuralNetwork {
         let model_name: String = format!("model_{}_{}.darj", name, file_num);
 
         match Path::new(&model_name).try_exists() {
+
             Ok(false) => {
                 let _file: fs::File = fs::File::create(&model_name).unwrap();
+                // for i in 0..self.node_array.len() {
+                //     for j in 0..self.node_array[i].len() {
+                //         self.node_array[i][j].cached_output = None;
+                //     }
+                // }
+                // let serialized: String = serde_json::to_string(&self).unwrap();
+                
                 let mut serialized = "".to_string();
-
+                // println!("len {}", self.node_array[0].len());
+                // for node in 0..self.node_array[0].len() {
+                //     print!("node: {}", node);
+                //     for k in 0..self.node_array[0][node].link_weights.len() {
+                //         println!("in weight: {}", self.node_array[0][node].link_weights[k]);
+                //         if k == self.node_array[0][node].link_weights.len() - 1 {
+                //             println!("input last {}", format!("{}", self.node_array[0][node].link_weights[k]).as_str());
+                //             let _ = serialized.push_str(format!("{}", self.node_array[0][node].link_weights[k]).as_str());
+                //         } else {
+                //             println!("input {}", format!("{}", self.node_array[0][node].link_weights[k]).as_str());
+                //             let _ = serialized.push_str(format!("{},", self.node_array[0][node].link_weights[k]).as_str());
+                //         }
+                //     }
+                // }
+                println!("write, length: {}", self.node_array.len());
                 for i in 0..self.node_array.len() {
                     if i != 0 {
                         let _ = serialized.push_str("lb\n");
@@ -427,20 +449,23 @@ impl NeuralNetwork {
                 }
                 serialized.push_str("lb\n");                    
                 serialized.push_str(format!("{}", self.activation_function).as_str());
-                match fs::write(&model_name, serialized) {
+                // println!("Serialized: {:?}", serialized);
+                match fs::write(&name, serialized) {
+                    
                     Ok(()) => {
                         println!("Model {:?} Saved", file_num);
 
                         Ok(model_name)
                     },
+
                     Err(_error) => {
 
                         Err(DarjeelingError::WriteModelFailed(model_name))
                     }
                 }
             },
-
             Ok(true) => {
+                
                 Err(DarjeelingError::ModelNameAlreadyExists(model_name))
             },
             Err(error) => Err(DarjeelingError::UnknownError(error.to_string()))
