@@ -5,27 +5,25 @@ use crate::{DEBUG, types::Types, activation::ActivationFunction};
 
 /// Represents a node in the network
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct Node {
+pub struct GenNode {
     pub link_weights: Vec<f32>,
     pub link_vals: Vec<Option<f32>>,
     pub links: usize,
     pub err_sig: Option<f32>,
-    pub correct_answer: Option<f32>,
     pub cached_output: Option<f32>,
-    pub category: Option<Types>,
     pub b_weight: Option<f32>,
 }
 
-impl Node {
+impl GenNode {
     
-    pub fn new(link_weights: &Vec<f32>, b_weight: Option<f32>) -> Node {
+    pub fn new(link_weights: &Vec<f32>, b_weight: Option<f32>) -> GenNode {
 
         let mut link_vals: Vec<Option<f32>> = vec![];
         for _i in 0..link_weights.len() {
             link_vals.push(None);
         }
 
-        Node { link_weights: link_weights.to_vec(), link_vals, links: link_weights.len(), err_sig: None, correct_answer: None, cached_output: None, category: None, b_weight }
+        GenNode { link_weights: link_weights.to_vec(), link_vals, links: link_weights.len(), err_sig: None, correct_answer: None, cached_output: None, category: None, b_weight }
     }
 
     fn input(&mut self) -> f32 {
@@ -53,6 +51,7 @@ impl Node {
             ActivationFunction::Tanh => Node::tanh(self.input()),
 
             ActivationFunction::Step => Node::step(self.input()),
+
         });
         
         self.cached_output.unwrap()

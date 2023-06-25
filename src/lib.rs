@@ -24,6 +24,7 @@ pub mod series;
 pub mod error;
 pub mod activation;
 pub mod types;
+pub mod generation;
+pub mod gen_input;
 #[cfg(test)]
 pub mod tests;
-pub mod generation;

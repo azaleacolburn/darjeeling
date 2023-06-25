@@ -3,13 +3,10 @@ use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub enum ActivationFunction {
-    
     Sigmoid,
     Tanh,
     Linear,
     Step,
-
-    Catcher // Catcher 'catches' if the function isn't loaded from the model correctly. Will panic when unwrapped.
 }
 
 impl fmt::Display for ActivationFunction {
@@ -23,7 +20,6 @@ impl fmt::Display for ActivationFunction {
 
             ActivationFunction::Step => write!(f, "step"),
 
-            ActivationFunction::Catcher => write!(f, "")
         }
     }
 }

@@ -9,7 +9,7 @@ use crate::{
     DEBUG, 
     error::DarjeelingError,
     input::Input, 
-    types::{Types, Types::Boolean}, 
+    types::{Types, Types::Boolean}, gen_input::GenInput, 
 };
 
 /// The top-level neural network struct
@@ -92,12 +92,20 @@ impl NeuralNetwork {
         net.parameters = Some(params);
         net
     }
+    // How do we backpropagate with the generative network
+    // The goal of the gen net is to make data that the dis net can't tell apart from the training data
+    // 1. epochs of dis model / epochs or something like that
+    // 2. Mean squared error shot out from the discriminator <- This one
+    // We might need a new discriminator struct
+    // How do we figure with answer nodes have the what error
+
+
     // So the idea here is we have two models.
     // One that tells generated and ungenerated models apart, and one that generates images
     // The distinguishing model has to revceive the generative images, then 'prove its worth' every epoch by training so that it can distinguish images.
     // Then the generative model adjusts accordingly
     // Then on the next epoch, the generative model generates more
-    pub fn learn(&mut self, data: &mut Vec<Input>, learning_rate: f32, name: &str, distinguising_learning_rate: f32, distinguising_hidden_neurons: i32, distinguising_hidden_layers: i32, distinguising_activation: ActivationFunction) -> Result<String, DarjeelingError> { // The self model should do the generation
+    pub fn learn(&mut self, data: &mut Vec<GenInput>, learning_rate: f32, name: &str, distinguising_learning_rate: f32, distinguising_hidden_neurons: i32, distinguising_hidden_layers: i32, distinguising_activation: ActivationFunction) -> Result<String, DarjeelingError> { // The self model should do the generation
         let mut epochs: f32 = 0.0;
         let hidden_layers = self.node_array.len() - 2;
         let mut model_name: Option<String> = None;
@@ -141,15 +149,6 @@ impl NeuralNetwork {
                         Err(error) => return Err(DarjeelingError::DisinguishingModel(error))
                     };
             }
-
-            // model_name: (String, f32) = match distinguishing_model.learn(
-            //         &mut outputs, 
-            //         vec![Types::Boolean(true), Types::Boolean(false)], 
-            //         learning_rate, name) 
-            // {
-            //     Ok(name) => name,
-            //     Err(error) => return Err(error)
-            // };
             
             self.backpropogate(learning_rate, hidden_layers as i32);
 

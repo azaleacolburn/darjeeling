@@ -495,16 +495,16 @@ impl NeuralNetwork {
  
         let mut node_array: Vec<Vec<Node>> = vec![];
         let mut layer: Vec<Node> = vec![];
-        let mut activation: ActivationFunction = ActivationFunction::Catcher;
+        let mut activation: Option<ActivationFunction> = None;
         for i in serialized_net.lines() {
             match i {
-                "sigmoid" => activation = ActivationFunction::Sigmoid,
+                "sigmoid" => activation = Some(ActivationFunction::Sigmoid),
 
-                "linear" => activation = ActivationFunction::Linear,
+                "linear" => activation = Some(ActivationFunction::Linear),
 
-                "tanh" => activation = ActivationFunction::Tanh,
+                "tanh" => activation = Some(ActivationFunction::Tanh),
 
-                "step" => activation = ActivationFunction::Step,
+                "step" => activation = Some(ActivationFunction::Step),
 
                 _ => {
                 
@@ -551,7 +551,7 @@ impl NeuralNetwork {
             sensor,
             answer,
             parameters: None,
-            activation_function: activation
+            activation_function: activation.unwrap()
         };
         // println!("node array {:?}", net.node_array);
 

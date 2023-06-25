@@ -177,4 +177,4 @@ Expected Output:
 ```
 
 # TODO:
-- Right now only categorization neural models are supported. Support for generative models could be cool.
+- Tests need to be written for generative models

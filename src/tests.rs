@@ -2,12 +2,13 @@ use core::panic;
 use std::{io::{BufReader, BufRead}, fs};
 use crate::{
     input::Input, 
+    gen_input::GenInput,
     DEBUG, 
     categorize, 
     dataframe::{DataFrame, Point}, 
     series::Series, 
     types::{Types, self},
-    activation::ActivationFunction
+    activation::ActivationFunction, generation
 };
 
 #[test]
@@ -125,7 +126,45 @@ fn digits_file() -> Vec<Input> {
         inputs.push(input);
     }
 
-inputs 
+    inputs 
+}
+
+#[test]
+fn train_test_gen() {
+
+}
+
+fn train_gen() {
+    let mut inputs = gen_data_file();
+    let net = generation::NeuralNetwork::new(8, 8, 8, 1, ActivationFunction::Sigmoid);
+    let model_name = net.learn(&mut inputs, 1, "dummy_gen", 0.5, 8, 1, ActivationFunction::Sigmoid)
+}
+
+/// Read the file you want to and format it as Inputs
+pub fn gen_data_file<'a>() -> Vec<GenInput> {
+    let file = match fs::File::open("training_data/gen.txt") {
+        Ok(file) => file,
+        Err(error) => panic!("Panic opening the file: {:?}", error)
+    };
+
+    let reader = BufReader::new(file);
+    let mut inputs: Vec<GenInput> = vec![];
+
+    for l in reader.lines() {
+
+        let line: String = match l {
+
+            Ok(line) => line,
+            Err(error) => panic!("{:?}", error)
+        };
+
+        let init_inputs: Vec<&str> = line.split(" ").collect();
+        // Confused about how this is supposed to work
+        let float_inputs: Vec<f32> = vec![init_inputs[0].split(" ").collect::<Vec<&str>>()[0].parse().unwrap(), init_inputs[0].split(" ").collect::<Vec<&str>>()[1].parse().unwrap()];
+        let input = GenInput::new(float_inputs);
+        inputs.push(input);
+    }
+    inputs  
 }
 
 /// Formats cateories from a vector of string slices to a vector of strings
