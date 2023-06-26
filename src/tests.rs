@@ -31,7 +31,7 @@ fn train_network_xor(mut data: Vec<Input>, categories: Vec<Types>, learning_rate
     let mut net = categorize::NeuralNetwork::new(input_num, hidden_num, answer_num, hidden_layers, ActivationFunction::Sigmoid);
 
     match net.learn(&mut data, categories, learning_rate, "xor") {
-        Ok((_new_net, model_name, _err_percent)) => Some(model_name),
+        Ok((_new_net, model_name, _err_percent, _mse)) => Some(model_name),
         Err(_err) => None
     }
 }
@@ -88,7 +88,7 @@ fn train_network_digits(mut data: Vec<Input>, categories: Vec<Types>, learning_r
 
     match net.learn(&mut data, categories, learning_rate, "digits") {
 
-        Ok((_new_net, model_name, _err_percent)) => Some(model_name),
+        Ok((_new_net, model_name, _err_percent, _mse)) => Some(model_name),
 
         Err(error) => panic!("{:?}", error)
     }
@@ -140,7 +140,7 @@ fn train_test_gen() {
 fn train_gen() -> String {
     let mut inputs = gen_data_file();
     let mut net = generation::NeuralNetwork::new(8, 8, 8, 1, ActivationFunction::Sigmoid);
-    net.learn(&mut inputs, 1.0, "dummy_gen", 0.5, 8, 1, ActivationFunction::Sigmoid).unwrap()
+    net.learn(&mut inputs, 1.0, "dummy_gen", 100, 0.5, 8, 1, ActivationFunction::Sigmoid).unwrap()
 }
 
 /// Read the file you want to and format it as Inputs

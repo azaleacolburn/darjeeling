@@ -92,33 +92,84 @@ impl NeuralNetwork {
         net.parameters = Some(params);
         net
     }
-    // How do we backpropagate with the generative network
-    // The goal of the gen net is to make data that the dis net can't tell apart from the training data
-    // 1. epochs of dis model / epochs or something like that
-    // 2. Mean squared error shot out from the discriminator <- This one
-    // We might need a new discriminator struct
-    // How do we figure with answer nodes have the what error
 
-
-    // So the idea here is we have two models.
-    // One that tells generated and ungenerated models apart, and one that generates images
-    // The distinguishing model has to revceive the generative images, then 'prove its worth' every epoch by training so that it can distinguish images.
-    // Then the generative model adjusts accordingly
-    // Then on the next epoch, the generative model generates more
-    pub fn learn(&mut self, data: &mut Vec<Input>, learning_rate: f32, name: &str, distinguising_learning_rate: f32, distinguising_hidden_neurons: i32, distinguising_hidden_layers: i32, distinguising_activation: ActivationFunction) -> Result<String, DarjeelingError> { // The self model should do the generation
+    /// Trains a neural model to generate new data formatted as inputs, based on the given data
+    /// 
+    /// ## Params
+    /// - Data: List of inputs to be trained on
+    /// - Learning Rate: The modifier that is applied to link weights as they're adjusted.
+    /// Try fiddling with this one, but -1.5 - 1.5 is recommended to start.
+    /// - Name: The model name
+    /// - Max Cycles: The maximum number of epochs the training will run for.
+    /// - Distinguising Learning Rate: The learning rate for the distinguishing model.
+    /// - Distinguishing Hidden Neurons: The number of hidden neurons in each layer of the distinguishing model.
+    /// - Distinguising Hidden Layers: The number of hidden layers in the distinguishing model.
+    /// - Distinguishing Activation: The activation function of the distinguishing model.
+    /// 
+    /// ## Returns
+    /// The falable name of the model that this neural network trained
+    /// 
+    /// ## Err
+    /// - ### WriteModelFailed
+    /// There was a problem when saving the model to a file
+    /// 
+    /// - ### ModelNameAlreadyExists
+    /// The random model name chosen already exists
+    /// Change the name or retrain
+    /// 
+    /// - ### RemoveModelFailed
+    /// Everytime a new distinguishing model is written to the project folder, the previous one has to be removed.
+    /// This removal failed,
+    /// 
+    /// - ### DistinguishingModel 
+    /// The distinguishing model training failed.
+    /// 
+    /// - ### UnknownError
+    /// Not sure what happened, but something failed
+    /// 
+    /// Make an issue on the [darjeeling](https://github.com/Ewie21/darjeeling) github page
+    /// Or contact me at elocolburn@comcast.net
+    /// 
+    /// ## TODO: Refactor to pass around the neural net, not the model name
+    /// 
+    /// ## Examples
+    /// ```ignore
+    /// use darjeeling::{
+    ///     categorize::NeuralNetwork,
+    ///     activation::ActivationFunction,
+    ///     input::Input, 
+    ///     // This file may not be avaliable
+    ///     // Everything found here will be hyper-specific to your project.
+    ///     tests::{categories_str_format, file}
+    /// };
+    /// 
+    /// // A file with data
+    /// // To make sure the networked is properly trained, make sure it follows some sort of pattern
+    /// // This is just sample data, for accurate results, around 3800 datapoints is needed
+    /// // 1 2 3 4 5 6 7 8
+    /// // 3 2 5 4 7 6 1 8
+    /// // 0 2 5 4 3 6 1 8
+    /// // 7 2 3 4 9 6 1 8
+    /// // You also need to write the file input function
+    /// // Automatic file reading and formatting function coming soon
+    /// let mut data: Vec<Input> = file();
+    /// let mut net = NeuralNetwork::new(2, 2, 2, 1, ActivationFunction::Sigmoid);
+    /// let learning_rate = 1.0;
+    /// let model_name = net.learn(&mut data, categories, learning_rate, "gen").unwrap();
+    /// let new_data: Vec<Input> = net.test(data).unwrap();
+    /// ```
+    pub fn learn(&mut self, data: &mut Vec<Input>, learning_rate: f32, name: &str, max_cycles: i32, distinguising_learning_rate: f32, distinguising_hidden_neurons: i32, distinguising_hidden_layers: i32, distinguising_activation: ActivationFunction) -> Result<String, DarjeelingError> { // The self model should do the generation
         let mut epochs: f32 = 0.0;
         let hidden_layers = self.node_array.len() - 2;
         let mut model_name: Option<String> = None;
         let mut outputs: Vec<Input> = vec![];
-        for _i in 0..100 { // arbitrary constant
-
+        for _i in 0..max_cycles { // arbitrary constant
+            #[allow(unused_assignments)]
+            let mut mse = 0.0; // mse is for a single epoch
             data.shuffle(&mut thread_rng());
-
             for line in 0..data.len() {
                 if DEBUG { println!("Training Checkpoint One Passed") }
-
                 self.push_downstream(data, line as i32);
-                
                 let mut output = vec![];
                 for i in 0..self.node_array[self.answer.unwrap()].len() {
                     output.push(self.node_array[self.answer.unwrap()][i].output(&self.activation_function));
@@ -128,29 +179,37 @@ impl NeuralNetwork {
                 outputs.push(data[line].clone());
             }
             if model_name.is_some() {
-                let mut new_model = categorize::NeuralNetwork::read_model(model_name.unwrap()).unwrap();
+                let mut new_model = categorize::NeuralNetwork::read_model(model_name.clone().unwrap()).unwrap();
+                match std::fs::remove_file(model_name.unwrap()) {
+                    Ok(_) => {},
+                    Err(err) => return Err(DarjeelingError::RemoveModelFailed(err.to_string()))
+                };
                 model_name = match new_model.learn(
                     &mut outputs, 
                     vec![Boolean(true), Boolean(false)], 
-                    learning_rate, name) 
+                    distinguising_learning_rate, &("distinguishing".to_owned() + &name)) 
                     {
-                        Ok(name) => Some(name.1),
+                        Ok((_net, name, _err_percent, errmse)) => { mse = errmse; Some(name) },
                         Err(error) => return Err(DarjeelingError::DisinguishingModel(error))
                     };
             } else {
                 let mut new_model = categorize::NeuralNetwork::new(self.node_array[self.answer.unwrap()].len() as i32, distinguising_hidden_neurons, 2, distinguising_hidden_layers, distinguising_activation);
+                match std::fs::remove_file(model_name.unwrap()) {
+                    Ok(_) => {},
+                    Err(err) => return Err(DarjeelingError::RemoveModelFailed(err.to_string()))
+                };
                 model_name = match new_model.learn(
                     data, 
                     vec![Boolean(true), Boolean(false)], 
                     distinguising_learning_rate, 
                     &("distinguishing".to_owned() + &name)) 
                     {
-                       Ok((_net, name, _err_percent)) => Some(name),
+                        Ok((_net, name, _err_percent, errmse)) => { mse = errmse; Some(name) },
                         Err(error) => return Err(DarjeelingError::DisinguishingModel(error))
                     };
             }
             
-            self.backpropogate(learning_rate, hidden_layers as i32);
+            self.backpropogate(learning_rate, hidden_layers as i32, mse);
 
             // let _old_err_percent = err_percent;
             epochs += 1.0;
@@ -228,12 +287,12 @@ impl NeuralNetwork {
         largest_node
     }
     /// Goes back through the network adjusting the weights of the all the neurons based on their error signal
-    fn backpropogate(&mut self, learning_rate: f32, hidden_layers: i32) {
+    fn backpropogate(&mut self, learning_rate: f32, hidden_layers: i32, mse: f32) {
 
         for answer in 0..self.node_array[self.answer.unwrap()].len() {
             if DEBUG { println!("Node: {:?}", self.node_array[self.answer.unwrap()][answer]); }
 
-            self.node_array[self.answer.unwrap()][answer].compute_answer_err_sig();
+            self.node_array[self.answer.unwrap()][answer].compute_answer_err_sig_gen(mse);
 
             if DEBUG { println!("Error: {:?}", self.node_array[self.answer.unwrap()][answer].err_sig.unwrap()) }
         }
@@ -372,28 +431,7 @@ impl NeuralNetwork {
 
             Ok(false) => {
                 let _file: fs::File = fs::File::create(&model_name).unwrap();
-                // for i in 0..self.node_array.len() {
-                //     for j in 0..self.node_array[i].len() {
-                //         self.node_array[i][j].cached_output = None;
-                //     }
-                // }
-                // let serialized: String = serde_json::to_string(&self).unwrap();
-                
                 let mut serialized = "".to_string();
-                // println!("len {}", self.node_array[0].len());
-                // for node in 0..self.node_array[0].len() {
-                //     print!("node: {}", node);
-                //     for k in 0..self.node_array[0][node].link_weights.len() {
-                //         println!("in weight: {}", self.node_array[0][node].link_weights[k]);
-                //         if k == self.node_array[0][node].link_weights.len() - 1 {
-                //             println!("input last {}", format!("{}", self.node_array[0][node].link_weights[k]).as_str());
-                //             let _ = serialized.push_str(format!("{}", self.node_array[0][node].link_weights[k]).as_str());
-                //         } else {
-                //             println!("input {}", format!("{}", self.node_array[0][node].link_weights[k]).as_str());
-                //             let _ = serialized.push_str(format!("{},", self.node_array[0][node].link_weights[k]).as_str());
-                //         }
-                //     }
-                // }
                 println!("write, length: {}", self.node_array.len());
                 for i in 0..self.node_array.len() {
                     if i != 0 {
@@ -415,7 +453,7 @@ impl NeuralNetwork {
                 serialized.push_str("lb\n");                    
                 serialized.push_str(format!("{}", self.activation_function).as_str());
                 // println!("Serialized: {:?}", serialized);
-                match fs::write(&name, serialized) {
+                match fs::write(&model_name, serialized) {
                     
                     Ok(()) => {
                         println!("Model {:?} Saved", file_num);
@@ -468,7 +506,7 @@ impl NeuralNetwork {
                 "linear" => activation = Some(ActivationFunction::Linear),
 
                 "tanh" => activation = Some(ActivationFunction::Tanh),
-
+ 
                 "step" => activation = Some(ActivationFunction::Step),
 
                 _ => {
@@ -498,7 +536,7 @@ impl NeuralNetwork {
                             weight_array.push(val);
                         }
                         // print!("{}", b_weight);
-                        node = Some(Node::new(&weight_array, Some(b_weight.parse().unwrap()) ));
+                        node = Some(Node::new(&weight_array, Some(b_weight.parse().unwrap())));
                     }
                     
                     layer.push(node.expect("Both cases provide a Some value for node"));

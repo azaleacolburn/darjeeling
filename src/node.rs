@@ -65,6 +65,13 @@ impl Node {
         if DEBUG { println!("Err Signal Post: {:?}", self.err_sig.unwrap()) }
     }
 
+    pub fn compute_answer_err_sig_gen(&mut self, mse: f32) {
+        if DEBUG { println!("Err Signal Pre: {:?}", self.err_sig); }
+        // This is where the derivative of the activation function goes I think
+        self.err_sig = Some(mse * self.cached_output.unwrap() * (1.00 - self.cached_output.unwrap()));
+        if DEBUG { println!("Err Signal Post: {:?}", self.err_sig.unwrap()) }
+    }
+
     pub fn adjust_weights(&mut self, learning_rate: f32){
         self.b_weight = Some(self.b_weight.unwrap() + self.err_sig.unwrap() * learning_rate);
         for link in 0..self.links {

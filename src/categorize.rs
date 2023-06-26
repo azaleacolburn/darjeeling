@@ -141,12 +141,13 @@ impl NeuralNetwork {
     /// let learning_rate = 1.0;
     /// let model_name = net.learn(&mut data, categories, learning_rate, "xor").unwrap();
     /// ```
-    pub fn learn<'b>(&mut self, data: &mut Vec<Input>, categories: Vec<Types>, learning_rate: f32, name: &str) -> Result<(&mut Self, String, f32), String> {
+    pub fn learn<'b>(&mut self, data: &mut Vec<Input>, categories: Vec<Types>, learning_rate: f32, name: &str) -> Result<(&mut Self, String, f32, f32), String> {
         let mut epochs: f32 = 0.0;
         let mut sum: f32 = 0.0;
         let mut count: f32 = 0.0;
         let mut err_percent: f32 = 0.0;
         let hidden_layers = self.node_array.len() - 2;
+        let mut mse: f32 = 0.0;
 
         self.categorize(categories);
 
@@ -164,7 +165,7 @@ impl NeuralNetwork {
 
                 if DEBUG { println!("Sum: {:?} Count: {:?}", sum, count); }
 
-                self.self_analysis(&mut Some(epochs), &mut sum, &mut count, data, line);
+                self.self_analysis(&mut Some(epochs), &mut sum, &mut count, data, &mut mse, line);
 
                 if DEBUG { println!("Sum: {:?} Count: {:?}", sum, count); }
                 
@@ -190,9 +191,9 @@ impl NeuralNetwork {
             Err(err) => return Err(format!("{}", err)),
         }
 
-        println!("Training: Finished with accuracy of {:?}/{:?} or {:?} percent after {:?} epochs", sum, count, err_percent, epochs);
+        println!("Training: Finished with accuracy of {:?}/{:?} or {:?} percent after {:?} epochs\nmse: {}", sum, count, err_percent, epochs, mse);
 
-        Ok((self, model_name, err_percent))
+        Ok((self, model_name, err_percent, mse))
     }
 
     /// Tests a pretrained model
@@ -200,6 +201,7 @@ impl NeuralNetwork {
         let mut sum:f32 = 0.0;
         let mut count:f32 = 0.0;
         let mut category: Option<Types> = None;
+        let mut mse: f32 = 0.0;
 
         let mut net: NeuralNetwork = match NeuralNetwork::read_model(model_name.clone()) {
 
@@ -222,7 +224,7 @@ impl NeuralNetwork {
 
             if DEBUG { println!("Sum: {:?} Count: {:?}", sum, count); }
 
-            category = Some(net.self_analysis(&mut None, &mut sum, &mut count, &mut data, line));
+            category = Some(net.self_analysis(&mut None, &mut sum, &mut count, &mut data, &mut mse, line).0);
 
             if DEBUG { println!("Sum: {:?} Count: {:?}", sum, count); }
 
@@ -231,7 +233,8 @@ impl NeuralNetwork {
 
         // let _old_err_percent = err_percent;
         let err_percent: f32 = (sum/count) * 100.0;
-        println!("Testing: Finished with accuracy of {:?}/{:?} or {:?} percent", sum, count, err_percent);
+        mse /= count;
+        println!("Testing: Finished with accuracy of {:?}/{:?} or {:?} percent\nMSE: {}", sum, count, err_percent, mse);
 
         Ok(category.unwrap())
     }
@@ -286,7 +289,7 @@ impl NeuralNetwork {
 
     /// Analyses the chosen answer node's result.
     /// Also increments sum and count
-    fn self_analysis<'b>(&'b self, epochs: &mut Option<f32>, sum: &'b mut f32, count: &'b mut f32, data: &mut Vec<Input>, line: usize) -> Types {
+    fn self_analysis<'b>(&'b self, epochs: &mut Option<f32>, sum: &'b mut f32, count: &'b mut f32, data: &mut Vec<Input>, mse: &mut f32, line: usize) -> (Types, f32) {
 
         // println!("answer {}", self.answer.unwrap());
         // println!("largest index {}", self.largest_node());
@@ -315,7 +318,12 @@ impl NeuralNetwork {
         }
         *count += 1.0;
 
-        brightest_node.category.clone().unwrap()
+        (brightest_node.category.clone().unwrap(), NeuralNetwork::calculate_err_for_generation_model(mse, *sum, *count))
+    }
+
+    fn calculate_err_for_generation_model(mse: &mut f32, sum: f32, count: f32) -> f32 {
+        *mse += f32::powi(sum - count, 2);
+        *mse
     }
 
     /// Finds the index and the brightest node in an array and returns it

@@ -3,7 +3,6 @@ use std::any::TypeId;
 
 #[derive(Debug, Clone)]
 pub enum DarjeelingError<'a> {
-
     ColumnDoesNotExist(&'a str), 
     RowDoesNotExist(&'a str),
     PointDoesNotExist((&'a str, &'a str)),
@@ -14,6 +13,7 @@ pub enum DarjeelingError<'a> {
     InvalidFormatType(TypeId),
     DisinguishingModel(String),
     SelfAnalysisStringConversion(String),
+    RemoveModelFailed(String),
 
     UnknownError(String)
 }
@@ -59,6 +59,10 @@ impl<'a> fmt::Display for DarjeelingError<'a> {
             ),
             DarjeelingError::SelfAnalysisStringConversion(err) => write!(f,
                 "Issue converting neural values to string (u8 limit exceeded). Full string support coming soon: Error message {}",
+                err
+            ),
+            DarjeelingError::RemoveModelFailed(err) => write!(f,
+                "Failed to delete unused distinguishing model. Not fatal. Error message: {}",
                 err
             ),
             DarjeelingError::UnknownError(error) => write!(f,
