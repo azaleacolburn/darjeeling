@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::types::Types;
 
 #[allow(dead_code)]
@@ -6,7 +8,7 @@ use crate::types::Types;
 /// Represents the input for the neural network
 pub struct Input {
     pub inputs: Vec<f32>,
-    pub answer: Types
+    pub answer: Option<Types>
 }
 
 impl Input  {
@@ -25,10 +27,21 @@ impl Input  {
     /// let answer: Types = Types::String("1".to_string());
     /// let formated_input: Input = Input::new(inputs, answer);
     /// ```
-    pub fn new(inputs: Vec<f32>, answer: Types) -> Input {
+    pub fn new(inputs: Vec<f32>, answer: Option<Types>) -> Input {
 
-        Input { inputs, answer }
+        Input { inputs, answer}
     }
 
     // TODO: Write format_as_input function
+}
+
+impl Display for Input {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buffer = String::from("");
+        for i in 0..self.inputs.len() - 1 {
+            buffer += format!("{},", self.inputs[i]).as_str();
+        }
+        buffer += format!("{}", self.inputs[self.inputs.len() - 1]).as_str();
+        write!(f, "{}", buffer)
+    }
 }

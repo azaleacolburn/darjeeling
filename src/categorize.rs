@@ -247,7 +247,8 @@ impl NeuralNetwork {
     
     fn assign_answers(&mut self, data: &mut Vec<Input>, line: i32){
         for node in 0..self.node_array[self.answer.unwrap()].len() {
-            if *self.node_array[self.answer.unwrap()][node].category.as_ref().unwrap() == data[line as usize].answer {
+            println!("{:?}", data[line as usize]);
+            if self.node_array[self.answer.unwrap()][node].category.as_ref().unwrap() == data[line as usize].answer.as_ref().unwrap() {
                 self.node_array[self.answer.unwrap()][node].correct_answer = Some(1.0);
             } else {
                 self.node_array[self.answer.unwrap()][node].correct_answer = Some(0.0);
@@ -306,9 +307,9 @@ impl NeuralNetwork {
         }
 
         if DEBUG { println!("Category: {:?} \nBrightness: {:?}", brightest_node.category.as_ref().unwrap(), brightness); }
-        if brightest_node.category.as_ref().unwrap().eq(&data[line].answer) { println!("Correct Answer Chosen"); }
+        if brightest_node.category.as_ref().unwrap().eq(&data[line].answer.as_ref().unwrap()) { println!("Correct Answer Chosen"); }
 
-        if brightest_node.category.as_ref().unwrap().eq(&data[line].answer) {
+        if brightest_node.category.as_ref().unwrap().eq(&data[line].answer.as_ref().unwrap()) {
             if DEBUG { println!("Sum++"); }
             *sum += 1.0;
         }
@@ -407,28 +408,7 @@ impl NeuralNetwork {
 
             Ok(false) => {
                 let _file: fs::File = fs::File::create(&model_name).unwrap();
-                // for i in 0..self.node_array.len() {
-                //     for j in 0..self.node_array[i].len() {
-                //         self.node_array[i][j].cached_output = None;
-                //     }
-                // }
-                // let serialized: String = serde_json::to_string(&self).unwrap();
-                
                 let mut serialized = "".to_string();
-                // println!("len {}", self.node_array[0].len());
-                // for node in 0..self.node_array[0].len() {
-                //     print!("node: {}", node);
-                //     for k in 0..self.node_array[0][node].link_weights.len() {
-                //         println!("in weight: {}", self.node_array[0][node].link_weights[k]);
-                //         if k == self.node_array[0][node].link_weights.len() - 1 {
-                //             println!("input last {}", format!("{}", self.node_array[0][node].link_weights[k]).as_str());
-                //             let _ = serialized.push_str(format!("{}", self.node_array[0][node].link_weights[k]).as_str());
-                //         } else {
-                //             println!("input {}", format!("{}", self.node_array[0][node].link_weights[k]).as_str());
-                //             let _ = serialized.push_str(format!("{},", self.node_array[0][node].link_weights[k]).as_str());
-                //         }
-                //     }
-                // }
                 println!("write, length: {}", self.node_array.len());
                 for i in 0..self.node_array.len() {
                     if i != 0 {
@@ -449,8 +429,9 @@ impl NeuralNetwork {
                 }
                 serialized.push_str("lb\n");                    
                 serialized.push_str(format!("{}", self.activation_function).as_str());
-                // println!("Serialized: {:?}", serialized);
-                match fs::write(&name, serialized) {
+                println!("Serialized: {:?}", serialized);
+                println!("{}", model_name);
+                match fs::write(&model_name, serialized) {
                     
                     Ok(()) => {
                         println!("Model {:?} Saved", file_num);
@@ -542,7 +523,7 @@ impl NeuralNetwork {
             }
             
         }
-        // println!("node array size {}", node_array.len());
+        println!("node array size {}", node_array.len());
         let sensor: Option<usize> = Some(0);
         let answer: Option<usize> = Some(node_array.len() - 1);
         

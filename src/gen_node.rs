@@ -59,7 +59,8 @@ impl GenNode {
     
     pub fn compute_answer_err_sig(&mut self) {
         if DEBUG { println!("Err Signal Pre: {:?}", self.err_sig); }
-        // This is where the derivative of the activation function goes I think
+        // How does this get done without the correct_answer???
+        // See gen::learn()
         self.err_sig = Some((self.correct_answer.unwrap() - self.cached_output.unwrap()) * self.cached_output.unwrap() * (1.00 - self.cached_output.unwrap()));
         if DEBUG { println!("Err Signal Post: {:?}", self.err_sig.unwrap()) }
     }

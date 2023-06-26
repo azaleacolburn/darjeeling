@@ -199,12 +199,12 @@ impl<'a> DataFrame<'a> {
             print!("\n");
         }
     }
-
+    // Refactor to specialize for generative networks
     pub fn frame_to_inputs(&self, answers: Vec<usize>) -> Vec<Input> {
         
         let mut input_vec: Vec<Input> = vec![];
         for i in 0..self.row_labels.len() {
-            let mut input: Input = Input::new(vec![], self.frame[i][answers[i]].val.clone());
+            let mut input: Input = Input::new(vec![], Some(self.frame[i][answers[i]].val.clone()));
             for j in 0..self.col_labels.len() - 1 {
                 let wrapped = self.value_at_index(i, j);
                 match wrapped {

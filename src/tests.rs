@@ -2,7 +2,6 @@ use core::panic;
 use std::{io::{BufReader, BufRead}, fs};
 use crate::{
     input::Input, 
-    gen_input::GenInput,
     DEBUG, 
     categorize, 
     dataframe::{DataFrame, Point}, 
@@ -32,9 +31,7 @@ fn train_network_xor(mut data: Vec<Input>, categories: Vec<Types>, learning_rate
     let mut net = categorize::NeuralNetwork::new(input_num, hidden_num, answer_num, hidden_layers, ActivationFunction::Sigmoid);
 
     match net.learn(&mut data, categories, learning_rate, "xor") {
-
         Ok((_new_net, model_name, _err_percent)) => Some(model_name),
-
         Err(_err) => None
     }
 }
@@ -52,7 +49,6 @@ pub fn xor_file<'a>() -> Vec<Input> {
     for l in reader.lines() {
 
         let line: String = match l {
-
             Ok(line) => line,
             Err(error) => panic!("{:?}", error)
         };
@@ -61,7 +57,7 @@ pub fn xor_file<'a>() -> Vec<Input> {
         // Confused about how this is supposed to work
         let float_inputs: Vec<f32> = vec![init_inputs[0].split(" ").collect::<Vec<&str>>()[0].parse().unwrap(), init_inputs[0].split(" ").collect::<Vec<&str>>()[1].parse().unwrap()];
         let answer_inputs: Types = Types::String((init_inputs[init_inputs.len()-1]).to_string());// TODO: Figure out what should be the row's answer; the last of a line for     
-        let input: Input = Input { inputs: float_inputs, answer: answer_inputs};
+        let input: Input = Input::new(float_inputs, Some(answer_inputs));
         inputs.push(input);
     }
     inputs  
@@ -121,7 +117,7 @@ fn digits_file() -> Vec<Input> {
         for i in 0..init_inputs.len()-1 {
             float_inputs.push(init_inputs[i].parse().unwrap());
         }
-        let input: Input = Input::new(float_inputs, Types::String(init_inputs[init_inputs.len()-1].to_string()));
+        let input: Input = Input::new(float_inputs, Some(Types::String(init_inputs[init_inputs.len()-1].to_string())));
         if DEBUG { println!("Correct Answer: {:?}", init_inputs[init_inputs.len()-1].to_string()); }
         inputs.push(input);
     }
@@ -131,24 +127,31 @@ fn digits_file() -> Vec<Input> {
 
 #[test]
 fn train_test_gen() {
-
+    let model_name = train_gen();
+    let data = gen_data_file();
+    let data1 = data[data.len() - 1].clone();
+    let mut model: generation::NeuralNetwork = generation::NeuralNetwork::read_model(model_name).unwrap();
+    let output: Vec<Input> = model.test(&mut vec![data1]).unwrap();
+    for i in 0..output.len() {
+        println!("{}", output[i]);
+    }
 }
 
-fn train_gen() {
+fn train_gen() -> String {
     let mut inputs = gen_data_file();
-    let net = generation::NeuralNetwork::new(8, 8, 8, 1, ActivationFunction::Sigmoid);
-    let model_name = net.learn(&mut inputs, 1, "dummy_gen", 0.5, 8, 1, ActivationFunction::Sigmoid)
+    let mut net = generation::NeuralNetwork::new(8, 8, 8, 1, ActivationFunction::Sigmoid);
+    net.learn(&mut inputs, 1.0, "dummy_gen", 0.5, 8, 1, ActivationFunction::Sigmoid).unwrap()
 }
 
 /// Read the file you want to and format it as Inputs
-pub fn gen_data_file<'a>() -> Vec<GenInput> {
+pub fn gen_data_file<'a>() -> Vec<Input> {
     let file = match fs::File::open("training_data/gen.txt") {
         Ok(file) => file,
         Err(error) => panic!("Panic opening the file: {:?}", error)
     };
 
     let reader = BufReader::new(file);
-    let mut inputs: Vec<GenInput> = vec![];
+    let mut inputs: Vec<Input> = vec![];
 
     for l in reader.lines() {
 
@@ -159,9 +162,11 @@ pub fn gen_data_file<'a>() -> Vec<GenInput> {
         };
 
         let init_inputs: Vec<&str> = line.split(" ").collect();
-        // Confused about how this is supposed to work
-        let float_inputs: Vec<f32> = vec![init_inputs[0].split(" ").collect::<Vec<&str>>()[0].parse().unwrap(), init_inputs[0].split(" ").collect::<Vec<&str>>()[1].parse().unwrap()];
-        let input = GenInput::new(float_inputs);
+        let mut float_inputs: Vec<f32> = vec![];
+        for i in 0..init_inputs.len() {
+            float_inputs.push(init_inputs[i].parse().unwrap());
+        }
+        let input = Input::new(float_inputs, None);
         inputs.push(input);
     }
     inputs  

@@ -1,7 +1,7 @@
 use ascii_converter::decimals_to_string;
 use rand::{Rng, seq::SliceRandom, thread_rng};
 use serde::{Serialize, Deserialize};
-
+use std::{fs, path::Path};
 use crate::{
     categorize, 
     node::Node, 
@@ -9,7 +9,7 @@ use crate::{
     DEBUG, 
     error::DarjeelingError,
     input::Input, 
-    types::{Types, Types::Boolean}, gen_input::GenInput, 
+    types::{Types, Types::Boolean}
 };
 
 /// The top-level neural network struct
@@ -105,7 +105,7 @@ impl NeuralNetwork {
     // The distinguishing model has to revceive the generative images, then 'prove its worth' every epoch by training so that it can distinguish images.
     // Then the generative model adjusts accordingly
     // Then on the next epoch, the generative model generates more
-    pub fn learn(&mut self, data: &mut Vec<GenInput>, learning_rate: f32, name: &str, distinguising_learning_rate: f32, distinguising_hidden_neurons: i32, distinguising_hidden_layers: i32, distinguising_activation: ActivationFunction) -> Result<String, DarjeelingError> { // The self model should do the generation
+    pub fn learn(&mut self, data: &mut Vec<Input>, learning_rate: f32, name: &str, distinguising_learning_rate: f32, distinguising_hidden_neurons: i32, distinguising_hidden_layers: i32, distinguising_activation: ActivationFunction) -> Result<String, DarjeelingError> { // The self model should do the generation
         let mut epochs: f32 = 0.0;
         let hidden_layers = self.node_array.len() - 2;
         let mut model_name: Option<String> = None;
@@ -123,11 +123,12 @@ impl NeuralNetwork {
                 for i in 0..self.node_array[self.answer.unwrap()].len() {
                     output.push(self.node_array[self.answer.unwrap()][i].output(&self.activation_function));
                 }
-                outputs.push(Input::new(output, Boolean(false))); // False indicates not real data
+                outputs.push(Input::new(output, Some(Boolean(false)))); // false indicates not real data
+                data[line].answer = Some(Boolean(true));
+                outputs.push(data[line].clone());
             }
             if model_name.is_some() {
                 let mut new_model = categorize::NeuralNetwork::read_model(model_name.unwrap()).unwrap();
-                data.append(&mut outputs);
                 model_name = match new_model.learn(
                     &mut outputs, 
                     vec![Boolean(true), Boolean(false)], 
@@ -138,14 +139,13 @@ impl NeuralNetwork {
                     };
             } else {
                 let mut new_model = categorize::NeuralNetwork::new(self.node_array[self.answer.unwrap()].len() as i32, distinguising_hidden_neurons, 2, distinguising_hidden_layers, distinguising_activation);
-                data.append(&mut outputs);
                 model_name = match new_model.learn(
                     data, 
                     vec![Boolean(true), Boolean(false)], 
                     distinguising_learning_rate, 
                     &("distinguishing".to_owned() + &name)) 
                     {
-                        Ok((_net, name, _err_percent)) => Some(name),
+                       Ok((_net, name, _err_percent)) => Some(name),
                         Err(error) => return Err(DarjeelingError::DisinguishingModel(error))
                     };
             }
@@ -158,20 +158,34 @@ impl NeuralNetwork {
             //if err_percent - old_err_percent < 0.00000001 { break; }
 
         }
-        // #[allow(unused_mut)]
-        // let mut model_name: String;
-        // match self.write_model(&name) {
+        #[allow(unused_mut)]
+        let mut model_name: String;
+        match self.write_model(&name) {
 
-        //     Ok(m_name) => {
-        //         model_name = m_name;
-        //     },
+            Ok(m_name) => {
+                model_name = m_name;
+            },
 
-        //     Err(error) => return Err(error)
-        // }
+            Err(error) => return Err(error)
+        }
 
         // println!("Training: Finished with accuracy of {:?}/{:?} or {:?} percent after {:?} epochs", sum, count, err_percent, epochs);
 
-        Ok(String::new())
+        Ok(model_name)
+    }
+
+    pub fn test(&mut self, data: &mut Vec<Input>) -> Result<Vec<Input>, DarjeelingError> {
+        data.shuffle(&mut thread_rng());
+        let mut outputs: Vec<Input> = vec![];
+        for i in 0..data.len() {
+            self.push_downstream(data, i as i32);
+            let mut output = vec![];
+            for i in 0..self.node_array[self.answer.unwrap()].len() {
+                output.push(self.node_array[self.answer.unwrap()][i].output(&self.activation_function));
+            }
+            outputs.push(Input::new(output, None)); // false indicates not real data
+        }
+        Ok(outputs)
     }
 
     /// Passes in data to the sensors, pushs data 'downstream' through the network
@@ -272,69 +286,241 @@ impl NeuralNetwork {
         }
     }
 
-/// Not needed for now
-/// Analyses the chosen answer node's result.
-/// Also increments sum and count
-/// Err if string requested and float exceeds u8 limit (fix by parsing the floats and slicing them)
-fn self_analysis<'b>(&'b self, epochs: &mut Option<f32>, sum: &'b mut f32, count: &'b mut f32, data: &mut Vec<Input>, line: usize, expected_type: Types) -> Result<Vec<Types>, DarjeelingError> {
+    /// Not needed for now
+    /// Analyses the chosen answer node's result.
+    /// Also increments sum and count
+    /// Err if string requested and float exceeds u8 limit (fix by parsing the floats and slicing them)
+    fn self_analysis<'b>(&'b self, epochs: &mut Option<f32>, sum: &'b mut f32, count: &'b mut f32, data: &mut Vec<Input>, line: usize, expected_type: Types) -> Result<Vec<Types>, DarjeelingError> {
 
-    // println!("answer {}", self.answer.unwrap());
-    // println!("largest index {}", self.largest_node());
-    // println!("{:?}", self);
-    let brightest_node: &Node = &self.node_array[self.answer.unwrap()][self.largest_node()];
-    let brightness: f32 = brightest_node.cached_output.unwrap();
+        // println!("answer {}", self.answer.unwrap());
+        // println!("largest index {}", self.largest_node());
+        // println!("{:?}", self);
+        let brightest_node: &Node = &self.node_array[self.answer.unwrap()][self.largest_node()];
+        let brightness: f32 = brightest_node.cached_output.unwrap();
 
-    if !(epochs.is_none()) {
-        if epochs.unwrap() % 10.0 == 0.0 && epochs.unwrap() != 0.0 {
-            println!("\n-------------------------\n");
-            println!("Epoch: {:?}", epochs);
-            println!("Category: {:?} \nBrightness: {:?}", brightest_node.category.as_ref().unwrap(), brightness);
-            if DEBUG {
-                let dimest_node: &Node = &self.node_array[self.answer.unwrap()][self.node_array[self.answer.unwrap()].len()-1-self.largest_node()];
-                println!("Chosen category: {:?} \nDimest Brightness: {:?}", dimest_node.category.as_ref().unwrap(), dimest_node.cached_output.unwrap());
+        if !(epochs.is_none()) {
+            if epochs.unwrap() % 10.0 == 0.0 && epochs.unwrap() != 0.0 {
+                println!("\n-------------------------\n");
+                println!("Epoch: {:?}", epochs);
+                println!("Category: {:?} \nBrightness: {:?}", brightest_node.category.as_ref().unwrap(), brightness);
+                if DEBUG {
+                    let dimest_node: &Node = &self.node_array[self.answer.unwrap()][self.node_array[self.answer.unwrap()].len()-1-self.largest_node()];
+                    println!("Chosen category: {:?} \nDimest Brightness: {:?}", dimest_node.category.as_ref().unwrap(), dimest_node.cached_output.unwrap());
+                }
             }
+        }
+
+        if DEBUG { println!("Category: {:?} \nBrightness: {:?}", brightest_node.category.as_ref().unwrap(), brightness); }
+        if brightest_node.category.as_ref().unwrap().eq(&data[line].answer.as_ref().unwrap()) { println!("Correct Answer Chosen"); }
+
+        if brightest_node.category.as_ref().unwrap().eq(&data[line].answer.as_ref().unwrap()) {
+            if DEBUG { println!("Sum++"); }
+            *sum += 1.0;
+        }
+        *count += 1.0;
+        let mut ret: Vec<Types> = vec![];
+        match expected_type {
+            Types::Integer(_) => {
+                for node in &self.node_array[self.answer.unwrap()] {
+                    let int = node.cached_output.unwrap() as i32;
+                    ret.push(Types::Integer(int));
+                }
+            }
+            Types::Boolean(_) => {
+                for node in &self.node_array[self.answer.unwrap()] {
+                    let bool = node.cached_output.unwrap() > 0.0;
+                    ret.push(Types::Boolean(bool));
+                }
+            }
+            Types::Float(_) => {
+                for node in &self.node_array[self.answer.unwrap()] {
+                    ret.push(Types::Float(node.cached_output.unwrap()));
+                }
+            }
+            Types::String(_) => {
+                for node in &self.node_array[self.answer.unwrap()] {
+                    let inputs = vec![(node.cached_output.unwrap() as u8)];
+                    let buff = match decimals_to_string(&inputs) {
+                        Ok(val) => val,
+                        Err(err) => return Err(DarjeelingError::SelfAnalysisStringConversion(err))
+                    };
+                    ret.push(Types::String(buff));
+                }
+            }
+
+        };
+        Ok(ret)
+    }
+
+    /// Serializes a trained model so it can be used later
+    /// 
+    /// ## Returns
+    /// The name of the model
+    /// 
+    /// ## Err
+    /// ### WriteModelFailed:   Wraps the models name
+    /// ### ModelNameAlreadyExists: Wraps the potential model name
+    /// ### UnknownError: Wraps error
+    ///  
+    pub fn write_model(&mut self, name: &str) -> Result<String, DarjeelingError> {
+        
+        let mut rng = rand::thread_rng();
+        let file_num: u32 = rng.gen();
+        let model_name: String = format!("model_{}_{}.darj", name, file_num);
+
+        match Path::new(&model_name).try_exists() {
+
+            Ok(false) => {
+                let _file: fs::File = fs::File::create(&model_name).unwrap();
+                // for i in 0..self.node_array.len() {
+                //     for j in 0..self.node_array[i].len() {
+                //         self.node_array[i][j].cached_output = None;
+                //     }
+                // }
+                // let serialized: String = serde_json::to_string(&self).unwrap();
+                
+                let mut serialized = "".to_string();
+                // println!("len {}", self.node_array[0].len());
+                // for node in 0..self.node_array[0].len() {
+                //     print!("node: {}", node);
+                //     for k in 0..self.node_array[0][node].link_weights.len() {
+                //         println!("in weight: {}", self.node_array[0][node].link_weights[k]);
+                //         if k == self.node_array[0][node].link_weights.len() - 1 {
+                //             println!("input last {}", format!("{}", self.node_array[0][node].link_weights[k]).as_str());
+                //             let _ = serialized.push_str(format!("{}", self.node_array[0][node].link_weights[k]).as_str());
+                //         } else {
+                //             println!("input {}", format!("{}", self.node_array[0][node].link_weights[k]).as_str());
+                //             let _ = serialized.push_str(format!("{},", self.node_array[0][node].link_weights[k]).as_str());
+                //         }
+                //     }
+                // }
+                println!("write, length: {}", self.node_array.len());
+                for i in 0..self.node_array.len() {
+                    if i != 0 {
+                        let _ = serialized.push_str("lb\n");
+                    }
+                    for j in 0..self.node_array[i].len() {
+                        for k in 0..self.node_array[i][j].link_weights.len() {
+                            print!("{}", self.node_array[i][j].link_weights[k]);
+                            if k == self.node_array[i][j].link_weights.len() - 1 {
+                                let _ = serialized.push_str(format!("{}", self.node_array[i][j].link_weights[k]).as_str());
+                            } else {
+                                let _ = serialized.push_str(format!("{},", self.node_array[i][j].link_weights[k]).as_str());
+                            }                        
+                        }
+                        let _ = serialized.push_str(format!(";{}", self.node_array[i][j].b_weight.unwrap().to_string()).as_str()); 
+                        let _ = serialized.push_str("\n");
+                    }
+                }
+                serialized.push_str("lb\n");                    
+                serialized.push_str(format!("{}", self.activation_function).as_str());
+                // println!("Serialized: {:?}", serialized);
+                match fs::write(&name, serialized) {
+                    
+                    Ok(()) => {
+                        println!("Model {:?} Saved", file_num);
+
+                        Ok(model_name)
+                    },
+
+                    Err(_error) => {
+
+                        Err(DarjeelingError::WriteModelFailed(model_name))
+                    }
+                }
+            },
+            Ok(true) => {
+                
+                Err(DarjeelingError::ModelNameAlreadyExists(model_name))
+            },
+            Err(error) => Err(DarjeelingError::UnknownError(error.to_string()))
         }
     }
 
-    if DEBUG { println!("Category: {:?} \nBrightness: {:?}", brightest_node.category.as_ref().unwrap(), brightness); }
-    if brightest_node.category.as_ref().unwrap().eq(&data[line].answer) { println!("Correct Answer Chosen"); }
+    /// Reads a serizalized Neural Network
+    /// 
+    /// ## Params
+    /// - Model Name: The name(or more helpfully the path) of the model to be read
+    /// 
+    /// ## Returns
+    /// A neural network read from a serialized neural network file
+    /// 
+    /// ## Err
+    /// If the file cannnot be read, or if the file does not contain a valid serialized Neural Network
+    pub fn read_model<'b>(model_name: String) -> Result<NeuralNetwork, DarjeelingError<'static>> {
 
-    if brightest_node.category.as_ref().unwrap().eq(&data[line].answer) {
-        if DEBUG { println!("Sum++"); }
-        *sum += 1.0;
+        println!("Loading model");
+        
+        // Err if the file reading fails
+        let serialized_net: String = match fs::read_to_string(&model_name) {
+            
+            Ok(serizalized_net) => serizalized_net,
+            Err(error) => return Err(DarjeelingError::ReadModelFailed(model_name.clone() + ";" +  &error.to_string()))
+        };
+ 
+        let mut node_array: Vec<Vec<Node>> = vec![];
+        let mut layer: Vec<Node> = vec![];
+        let mut activation: Option<ActivationFunction> = None;
+        for i in serialized_net.lines() {
+            match i {
+                "sigmoid" => activation = Some(ActivationFunction::Sigmoid),
+
+                "linear" => activation = Some(ActivationFunction::Linear),
+
+                "tanh" => activation = Some(ActivationFunction::Tanh),
+
+                "step" => activation = Some(ActivationFunction::Step),
+
+                _ => {
+                
+                    if i.trim() == "lb" {
+                        node_array.push(layer.clone());
+                        // println!("pushed layer {:?}", layer.clone());
+                        layer = vec![];
+                        continue;
+                    }
+                    #[allow(unused_mut)]
+                    let mut node: Option<Node>;
+                    if node_array.len() == 0 {
+                        let b_weight: Vec<&str> = i.split(";").collect();
+                        // println!("b_weight: {:?}", b_weight);
+                        node = Some(Node::new(&vec![], Some(b_weight[1].parse().unwrap())));
+                    } else {
+                        let node_data: Vec<&str> = i.trim().split(";").collect();
+                        let str_weight_array: Vec<&str> = node_data[0].split(",").collect();
+                        let mut weight_array: Vec<f32> = vec![];
+                        let b_weight: &str = node_data[1];
+                        // println!("node_data: {:?}", node_data);
+                        // println!("array {:?}", str_weight_array);
+                        for weight in 0..str_weight_array.len() {
+                            // println!("testing here {:?}", str_weight_array[weight]);
+                            let val: f32 = str_weight_array[weight].parse().unwrap();
+                            weight_array.push(val);
+                        }
+                        // print!("{}", b_weight);
+                        node = Some(Node::new(&weight_array, Some(b_weight.parse().unwrap()) ));
+                    }
+                    
+                    layer.push(node.expect("Both cases provide a Some value for node"));
+                    // println!("layer: {:?}", layer.clone())
+                }
+            }
+            
+        }
+        // println!("node array size {}", node_array.len());
+        let sensor: Option<usize> = Some(0);
+        let answer: Option<usize> = Some(node_array.len() - 1);
+        
+        let net = NeuralNetwork {
+            node_array,
+            sensor,
+            answer,
+            parameters: None,
+            activation_function: activation.unwrap()
+        };
+        // println!("node array {:?}", net.node_array);
+
+        Ok(net)
     }
-    *count += 1.0;
-    let mut ret: Vec<Types> = vec![];
-    match expected_type {
-        Types::Integer(_) => {
-            for node in &self.node_array[self.answer.unwrap()] {
-                let int = node.cached_output.unwrap() as i32;
-                ret.push(Types::Integer(int));
-            }
-        }
-        Types::Boolean(_) => {
-            for node in &self.node_array[self.answer.unwrap()] {
-                let bool = node.cached_output.unwrap() > 0.0;
-                ret.push(Types::Boolean(bool));
-            }
-        }
-        Types::Float(_) => {
-            for node in &self.node_array[self.answer.unwrap()] {
-                ret.push(Types::Float(node.cached_output.unwrap()));
-            }
-        }
-        Types::String(_) => {
-            for node in &self.node_array[self.answer.unwrap()] {
-                let inputs = vec![(node.cached_output.unwrap() as u8)];
-                let buff = match decimals_to_string(&inputs) {
-                    Ok(val) => val,
-                    Err(err) => return Err(DarjeelingError::SelfAnalysisStringConversion(err))
-                };
-                ret.push(Types::String(buff));
-            }
-        }
+}
 
-    };
-    Ok(ret)
-}
-}
