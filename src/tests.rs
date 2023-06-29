@@ -4,7 +4,7 @@ use crate::{
     input::Input, 
     DEBUG, 
     categorize, 
-    dataframe::{DataFrame, Point}, 
+    dataframe::DataFrame,
     series::Series, 
     types::{Types, self},
     activation::ActivationFunction, generation
@@ -31,7 +31,7 @@ fn train_network_xor(mut data: Vec<Input>, categories: Vec<Types>, learning_rate
     let mut net = categorize::NeuralNetwork::new(input_num, hidden_num, answer_num, hidden_layers, ActivationFunction::Sigmoid);
 
     match net.learn(&mut data, categories, learning_rate, "xor") {
-        Ok((_new_net, model_name, _err_percent, _mse)) => Some(model_name),
+        Ok((model_name, _err_percent, _mse)) => Some(model_name),
         Err(_err) => None
     }
 }
@@ -88,7 +88,7 @@ fn train_network_digits(mut data: Vec<Input>, categories: Vec<Types>, learning_r
 
     match net.learn(&mut data, categories, learning_rate, "digits") {
 
-        Ok((_new_net, model_name, _err_percent, _mse)) => Some(model_name),
+        Ok((model_name, _err_percent, _mse)) => Some(model_name),
 
         Err(error) => panic!("{:?}", error)
     }
@@ -190,22 +190,17 @@ fn dataframe_add_sub<'a>() {
     frame.display();
     frame.add_row(
         "Label!", 
-        Point::point_vector(
-            frame.get_cols_len(), 
-            types::fmt_int_type_vec(vec![10, 11, 12])
-        )
+        types::fmt_int_type_vec(vec![10, 11, 12]),
     ).unwrap(); 
     frame.display();
     print!("{:?}\n", frame.index_at_labels("Label!", "col1"));
-    frame.delete_row("Label!").unwrap();
-    frame.add_col("col3", 
-        Point::point_vector(
-                frame.get_cols_len(), 
-                types::fmt_str_type_vec(vec!["hellow", "fun", "life"])
-                )
+    frame.delete_row("Label!");
+    let _ = frame.add_col(
+        "col3", 
+        types::fmt_str_type_vec(vec!["hellow", "fun", "life"])
     );
     frame.display();
-    frame.delete_column("col3").unwrap();
+    frame.delete_col("col3");
     frame.display();
 }
 

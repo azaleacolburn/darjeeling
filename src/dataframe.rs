@@ -1,169 +1,116 @@
-use std::fmt::Debug;
-
+use std::{fmt::Debug, collections::hash_map::DefaultHasher};
 use serde::Serialize;
+use crate::{types::Types, input::Input, error::DarjeelingError};
+use std::hash::{Hash, Hasher};
+static INITIAL_SIZE: usize = 10;
 
-use crate::{types::Types, input::Input};
-
+// TODO: Fix hash overflow issue
 #[derive(Debug, Serialize)]
 pub struct DataFrame<'a> {
-    frame: Vec<Vec<Point>>,
+    frame: Vec<Vec<Types>>,
     row_labels: Vec<&'a str>,
-    col_labels: Vec<&'a str>
+    col_labels: Vec<&'a str>,
+    inner_capacity: usize
 }
 
-#[derive(Debug, Clone, Serialize)]
-pub struct Point {
-    row: usize,
-    col: usize,
-    pub val: Types
-}
-
+// Managing same capacity is difficult
 impl<'a> DataFrame<'a> {
 
-    pub fn new(frame: Vec<Vec<Types>>, row_labels: Vec<&'a str>, col_labels: Vec<&'a str>) -> DataFrame<'a> {
-
-        let mut proper_frame: Vec<Vec<Point>> = vec![];
-        // For every column
-        for col in 0..frame.len() {
-
-            // proper_frame.push(Point::point_vector(i, frame[i].clone()));
-            proper_frame.push(vec![]);
-            // For every row in that column
-            for row in 0..frame[col].len() {
-                proper_frame[col].push(Point::new( row, col, frame[col][row].clone()));
-            }
+    /// Creates a new Dataframe
+    pub fn new(mut frame: Vec<Vec<Types>>, row_labels: Vec<&'a str>, col_labels: Vec<&'a str>) -> DataFrame<'a> {
+        let mut inner = 0;
+        for i in 0..frame.len() {
+            let len = frame[i].len();
+            if len > inner { inner = len }
         }
-
-        DataFrame { frame: proper_frame, row_labels, col_labels }
+        for i in 0..frame.len() { unsafe { frame[i].set_len(inner) }; }
+        let outer = frame.len();
+        let mut final_frame = DataFrame { frame, row_labels, col_labels, inner_capacity: inner };
+        final_frame.rehash_dataframe(outer * 2);
+        final_frame
     }
 
-    pub fn value_at_index(&self, row: usize, col    : usize) -> &Types {
-
-        &&self.frame[col][row].val
+    /// Gets the value at a hash
+    /// # Err
+    /// If the column or row doesn't exist
+    pub fn value_at_index(&self, row: usize, col: usize) -> Result<&Types, DarjeelingError> {
+        if col < self.frame.len() {
+            if row < self.frame[col].len() { return Ok(&&self.frame[col as usize][row as usize]); }
+            return Err(DarjeelingError::RowDoesNotExist(format!("{}", row)));
+        }
+        Err(DarjeelingError::ColumnDoesNotExist(format!("{}", col)))
+    }
+    
+    /// Gets the index at labels
+    /// # Panics 
+    /// If hashing overflows or if labels don't exist
+    pub fn index_at_labels(&self, row: &str, col: &str) -> (usize, usize){
+        (self.label_index_col(row), self.label_index_row(col))
     }
 
-    pub fn index_at_labels(&self, row: &str, col: &str) -> Result<(usize, usize), &str>{
-
-        let row_index = match DataFrame::<'a>::label_index(row, &self.row_labels) {
-
-            Ok(i) => i,
-            Err(error) => return Err(error)
-        };
-        let col_index = match DataFrame::<'a>::label_index(col, &self.col_labels) {
-
-            Ok(i) => i,
-            Err(error) => return Err(error)
-
-        };
-
-        Ok((row_index, col_index))
+    /// Gets the value in the dataframe at the coordinates of the labels
+    pub fn value_at_labels(&self, row: &str, col: &str) ->  Result<&Types, DarjeelingError> {
+        let coords: (usize, usize) = self.index_at_labels(row, col);
+        self.value_at_index(coords.0 as usize, coords.1 as usize)
     }
 
-    pub fn value_at_labels(&self, row: &str, col: &str) ->  Result<&Types, &str> {
-
-        let row_index: usize = match DataFrame::<'a>::label_index(row, &self.row_labels) {
-
-            Ok(i) => i,
-            Err(error) => return Err(error)
-        };
-        let col_index: usize = match DataFrame::<'a>::label_index(col, &self.col_labels) {
-
-            Ok(i) => i,
-            Err(error) => return Err(error)
-
-        };
-
-        Ok(self.value_at_index(row_index, col_index))
-    }
-
-    pub fn add_col(&mut self, label: &'a str, content: Vec<Point>) {
-
+    /// Adds a row to a dataframe
+    /// # Panics 
+    /// If reallocation fails
+    pub fn add_row(&mut self, label: &'a str, content: Vec<Types>) -> Result<(), DarjeelingError> {
         // Checks to make sure the dataframe is still valid
-        assert_eq!(self.col_labels.len(), self.frame.len());
-
-        self.col_labels.push(label);
-        self.frame.push(content);
-
-        assert_eq!(self.col_labels.len(), self.col_labels.len());
+        assert_eq!(self.row_labels.len(), self.frame.len());
+        if self.row_labels.contains(&label) { return Err(DarjeelingError::RowAlreadyExists(format!("{}", label))); }
+        if content.len() > self.inner_capacity { self.rehash_dataframe(content.len() * 2) }
+        self.row_labels.push(label);
+        let row_index = self.label_index_row(label);
+        self.frame[row_index] = content;
+        Ok(())
     }
 
-    // Big confusion
-    pub fn add_row(&mut self, label: &'a str, content: Vec<Point>) -> Result<(), String> {
-        
+    /// Adds a column to a dataframe
+    /// # Panics 
+    /// If reallocation fails
+    pub fn add_col(&mut self, label: &'a str, content: Vec<Types>) -> Result<(), DarjeelingError> {
         // Checks to make sure the dataframe is still valid
-        assert_eq!(self.col_labels.len(), self.col_labels.len());
-
         // This was searching for an index of a label to delete instead of
         // adding the index to the end
-        
-        let _index: Option<usize> = match self.row_labels.iter().position(|x| *x == label) {
+        assert_eq!(self.frame[0].capacity(), self.inner_capacity);
+        if self.col_labels.contains(&label) { return Err(DarjeelingError::RowAlreadyExists(format!("{}", label))); }
+        if content.len() > self.inner_capacity { self.rehash_dataframe(content.len() * 2); }
 
-            Some(_i) => return Err(format!("This label already exists {:?}", label)),
-            None => None
-        };
-        self.row_labels.push(label);
+        self.col_labels.push(label);
+        let col_index = self.label_index_col(label);
+        for i in 0..self.frame.len() { self.frame[i][col_index] = content[i].clone(); }
+        assert_eq!(self.frame[0].capacity(), self.inner_capacity);
+        Ok(())
+    }
+
+    /// Deletes a row of a dataframe give a label
+    /// # Panics 
+    /// If the index does not exist
+    pub fn delete_row(&mut self, label: &'a str) {
+        let index = self.label_index_row(label);
+        search_remove(&mut self.row_labels, label);
+        self.frame.remove(index);
+    }
+
+    /// Deletes a column of a dataframe given a label
+    /// # Panics 
+    /// If the index does not exist
+    pub fn delete_col(&mut self, label: &'a str) {
+        let index = self.label_index_col(label);
+        search_remove(&mut self.row_labels, label);
         for i in 0..self.frame.len() {
-            self.frame[i].push(content[i].clone());
-        }
-        assert_eq!(self.row_labels.len(), self.row_labels.len());
-
-        Ok(())
-    }
-
-    // TODO: Fix to switch rows and columns
-    pub fn delete_row(&mut self, label: &'a str) -> Result<(), &str> {
-        
-        let index: usize = match self.row_labels.iter().position(|x| *x == label) {
-
-            Some(i) => i,
-            None => return Err("Row not found")
-        };
-        self.row_labels.remove(index);
-        for i in 0..self.frame.len() {
-            self.frame[i].remove(index);  
-        }
-        
-        Ok(())
-    }
-    // TODO: Fix to switch columns and rows
-    pub fn delete_column<'b>(&'b mut self, label: &'a str) -> Result<(), &'b str> {
-
-        let index: usize = match self.col_labels.iter().position(|x| *x == label) {
-
-            Some(i) => i,
-            None => return Err("Column not found")
-        };
-        self.col_labels.remove(index);
-        self.frame.remove(index);  
-        
-        Ok(())
-    }
-
-    pub fn label_index(label: &str, labels: &Vec<&str>) -> Result<usize, &'a str> {
-
-        let mut col_num: Option<usize> = None;
-
-        for i in 0..labels.len() {
-            if labels[i] == label { 
-                col_num = Some(i);
-                break;
-            }
-        }
-
-        match col_num {
-
-            Some(n) => Ok(n),
-            None => Err("This label doesn't exist")
+            self.frame[i].remove(index);
         }
     }
 
     pub fn get_cols_len(&self) -> usize {
-
         self.col_labels.len()
     }
 
     pub fn get_rows_len(&self) -> usize {
-
         self.row_labels.len()
     }
 
@@ -185,7 +132,7 @@ impl<'a> DataFrame<'a> {
                 }
             }
             for j in 0..self.col_labels.len() {
-                self.frame[j][i].val.display();
+                self.frame[j][i].display();
                 if longest != self.row_labels[j].len() && shortest != longest{
                     for _k in 0..self.col_labels[j].len() + 2 {
                         print!(" ");
@@ -200,81 +147,148 @@ impl<'a> DataFrame<'a> {
         }
     }
     // Refactor to specialize for generative networks
-    pub fn frame_to_inputs(&self, answers: Vec<usize>) -> Vec<Input> {
-        
-        let mut input_vec: Vec<Input> = vec![];
+    pub fn frame_to_categorization_inputs(&self, answers: Vec<i32>) -> Result<Vec<Input>, DarjeelingError> {
+        let mut inputs: Vec<Input> = vec![];
         for i in 0..self.row_labels.len() {
-            let mut input: Input = Input::new(vec![], Some(self.frame[i][answers[i]].val.clone()));
+            let mut input: Input = Input::new(vec![], Some(self.frame[i][answers[i] as usize].clone()));
             for j in 0..self.col_labels.len() - 1 {
                 let wrapped = self.value_at_index(i, j);
                 match wrapped {
-                    Types::Boolean(boolean) => {
-                        if *boolean {
-                            input.inputs.push(1.0);
-                        } else {
-                            input.inputs.push(0.0);
+                    Ok(val) => {
+                        match val {
+                            Types::Boolean(boolean) => {
+                                if *boolean {
+                                    input.inputs.push(1.0);
+                                } else {
+                                    input.inputs.push(0.0);
+                                }
+                                
+                            },
+                            Types::Float(float) => {
+                                input.inputs.push(*float)
+                            },
+                            Types::Integer(int) => {
+                                input.inputs.push(*int as f32);
+                            },
+                            Types::String(str) => {
+                                let ascii = ascii_converter::string_to_decimals(str).unwrap();
+                                let mut string = String::new();
+                                for i in ascii {
+                                    string.push_str(&i.to_string());
+                                }
+                                input.inputs.push(string.parse().unwrap());
+                            }
                         }
-                        
                     },
-                    Types::Float(float) => {
-                        input.inputs.push(*float)
-                    },
-                    Types::Integer(int) => {
-                        input.inputs.push(*int as f32);
-                    },
-                    Types::String(str) => {
-                        let ascii = ascii_converter::string_to_decimals(str).unwrap();
-                        let mut string = String::new();
-                        for i in ascii {
-                            string.push_str(&i.to_string());
+                    Err(err) => return Err(err)
+                }
+                
+            }
+            inputs.push(input);
+        }
+        Ok(inputs)
+    }
+
+    pub fn frame_to_generation_inputs(&self) -> Result<Vec<Input>, DarjeelingError> {
+        let mut inputs: Vec<Input> = vec![];
+        for i in 0..self.row_labels.len() {
+            let mut input: Input = Input::new(vec![], None);
+            for j in 0..self.col_labels.len() - 1 {
+                let wrapped = self.value_at_index(i, j);
+                match wrapped {
+                    Ok(val) => {
+                        match val {
+                            Types::Boolean(boolean) => {
+                                if *boolean {
+                                    input.inputs.push(1.0);
+                                } else {
+                                    input.inputs.push(0.0);
+                                }
+                                
+                            },
+                            Types::Float(float) => {
+                                input.inputs.push(*float)
+                            },
+                            Types::Integer(int) => {
+                                input.inputs.push(*int as f32);
+                            },
+                            Types::String(str) => {
+                                let ascii = ascii_converter::string_to_decimals(str).unwrap();
+                                let mut string = String::new();
+                                for i in ascii {
+                                    string.push_str(&i.to_string());
+                                }
+                                input.inputs.push(string.parse().unwrap());
+                            }
                         }
-                        input.inputs.push(string.parse().unwrap());
-                    }
+                    },
+                    Err(err) => return Err(err)
                 }
             }
-            input_vec.push(input);
+            inputs.push(input);
         }
-        return input_vec;
-    }
-}
-
-impl Point {
-
-    pub fn new(row: usize, col: usize, content: Types) -> Point {
-
-        Point { row, col, val: content }
+        Ok(inputs)
     }
 
-    pub fn point_vector(col: usize, vector: Vec<Types>) -> Vec<Point> {
+    fn label_index_row(&self, label: &str) -> usize {
+        (hash_str(label) % self.frame.capacity() as u64) as usize
+    }
 
-        let mut new_vector: Vec<Point> = vec![];
+    fn label_index_col(&self, label: &str) -> usize {
+        assert_eq!(self.frame[0].capacity(), self.inner_capacity);
+        (hash_str(label) % self.inner_capacity as u64) as usize
+    }
 
-        for row in 0..vector.len() {
-            new_vector.push(Point::new(row, col, vector[row].clone()));
+    fn rehash_dataframe(&mut self, new_capacity: usize) {
+        // This starts with self.inner_capacity being old
+        let mut new_frame: Vec<Vec<Types>> = Vec::with_capacity(new_capacity);
+        // Rehashes row
+        for i in 0..self.row_labels.len() {
+            let old_index = self.label_index_row(self.row_labels[i]);
+            let new_index = (hash_str(self.row_labels[i]) % new_capacity as u64) as usize; // Hashing has to be done manually since the capacitiy hasn't been updated
+            new_frame[new_index] = self.frame[old_index].clone();
         }
-
-        new_vector
+        // Rehashes cols
+        for i in 0..self.row_labels.len() {
+            for j in 0..self.col_labels.len() {
+                let old_index = self.label_index_col(self.col_labels[j]);
+                let new_index = (hash_str(self.row_labels[i]) % new_capacity as u64) as usize;
+                new_frame[i][new_index] = self.frame[i][old_index].clone();
+            }
+        }
+        self.inner_capacity = new_capacity;
+        self.frame = new_frame;
     }
 }
 
 pub fn find_longest(vec: &Vec<&str>) -> usize {
-
     let mut longest_len: usize = vec[0].len();
     for i in 1..vec.len() {
         let length = vec[i].len();
         if length > longest_len { longest_len = length }
     }
-
     longest_len
 }
 
 pub fn find_shortest(vec: &Vec<&str>) -> usize {
-
     let mut shortest_len: usize = vec[0].len();
     for i in 1..vec.len() {
         let length = vec[i].len();
         if length < shortest_len { shortest_len = length; }
     }
-
     shortest_len
+}
+
+pub fn search_remove<T>(vec: &mut Vec<T>, val: T) 
+    where T: PartialEq {
+        for i in 0..vec.len() {
+            if vec[i] == val { vec.remove(i); }
+            break;
+        }
+}
+
+fn hash_str(string: &str) -> u64 {
+    let mut s = DefaultHasher::new();
+    string.hash(&mut s);
+    s.finish()
 }

@@ -2,23 +2,27 @@ use core::fmt;
 use std::any::TypeId;
 
 #[derive(Debug, Clone)]
-pub enum DarjeelingError<'a> {
-    ColumnDoesNotExist(&'a str), 
-    RowDoesNotExist(&'a str),
-    PointDoesNotExist((&'a str, &'a str)),
+pub enum DarjeelingError {
+    ColumnDoesNotExist(String), 
+    RowDoesNotExist(String),
+    PointDoesNotExist((String, String)),
+    RowAlreadyExists(String),
+    ColumnAlreadyExists(String),
+
     ReadModelFailed(String),
-    ReadModelFunctionFailed(String, Box<DarjeelingError<'a>>),
+    ReadModelFunctionFailed(String, Box<DarjeelingError>),
     WriteModelFailed(String),
-    ModelNameAlreadyExists(String),
     InvalidFormatType(TypeId),
-    DisinguishingModel(String),
+    DisinguishingModelError(String),
     SelfAnalysisStringConversion(String),
     RemoveModelFailed(String),
+    ActivationFunctionNotRead(String),
+    InvalidNodeValueRead(String),
 
     UnknownError(String)
 }
 
-impl<'a> fmt::Display for DarjeelingError<'a> {
+impl<'a> fmt::Display for DarjeelingError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             DarjeelingError::ColumnDoesNotExist(column) => write!(f, 
@@ -34,7 +38,7 @@ impl<'a> fmt::Display for DarjeelingError<'a> {
                 row, column
             ),
             DarjeelingError::ReadModelFailed(model_name) => write!(f,
-                "Unable to read model {:?}, \n Hint: Double check the model_name \n Error Message: {:?}",
+                "Unable to read model {:?}, \n Hint: Double check the model_name \n Error Message: {}",
                 model_name.split(";").collect::<Vec<&str>>()[0], model_name.split(";").collect::<Vec<&str>>()[1]
             ),
             DarjeelingError::ReadModelFunctionFailed(model_name,error ) => write!(f,
@@ -45,16 +49,12 @@ impl<'a> fmt::Display for DarjeelingError<'a> {
                 "Unable to write model {:?}, \n Hint: This is probably because the random name already exists, try saving it again",
                 model_name.as_str()
             ),
-            DarjeelingError::ModelNameAlreadyExists(model_name) => write!(f,
-                "Model name {:?} already exists, \n Hint: Try saving it again",
-                model_name.as_str()
-            ),
             DarjeelingError::InvalidFormatType(type_id) => write!(f,
                 "We couldn't format this value because the type: {:?} wasn't valid",
                 type_id
             ),
-            DarjeelingError::DisinguishingModel(err) => write!(f,
-                "Issue with distinguishing mode training: {}",
+            DarjeelingError::DisinguishingModelError(err) => write!(f,
+                "Error while training distinguishing model. Error: {}",
                 err
             ),
             DarjeelingError::SelfAnalysisStringConversion(err) => write!(f,
@@ -64,6 +64,22 @@ impl<'a> fmt::Display for DarjeelingError<'a> {
             DarjeelingError::RemoveModelFailed(err) => write!(f,
                 "Failed to delete unused distinguishing model. Not fatal. Error message: {}",
                 err
+            ),
+            DarjeelingError::ActivationFunctionNotRead(err) => write!(f,
+                "Tried to read a .darj file without a valid activation function. Error message: {}",
+                err
+            ),
+            DarjeelingError::InvalidNodeValueRead(err) => write!(f,
+                "Tried to parse a value from a .darj file that wasn't a valid f32. Error message: {}",
+                err
+            ),
+            DarjeelingError::ColumnAlreadyExists(label) => write!(f,
+                "Attempted to add a column labeled: {}, that already exist in the dataframe",
+                label
+            ),
+            DarjeelingError::RowAlreadyExists(label) => write!(f,
+                "Attemtped to add a row labeled: {}, that already exists",
+                label
             ),
             DarjeelingError::UnknownError(error) => write!(f,
                 "Non-Darjeeling error encountered: \n {:?}",

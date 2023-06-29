@@ -22,7 +22,7 @@ pub struct NeuralNetwork {
     parameters: Option<u128>,
     activation_function: ActivationFunction
 }
-
+#[warn(clippy::unwrap_in_result)]
 impl NeuralNetwork {
     
     /// Constructor function for the neural network
@@ -135,7 +135,7 @@ impl NeuralNetwork {
     /// ## Examples
     /// ```ignore
     /// use darjeeling::{
-    ///     categorize::NeuralNetwork,
+    ///     generation::NeuralNetwork,
     ///     activation::ActivationFunction,
     ///     input::Input, 
     ///     // This file may not be avaliable
@@ -154,16 +154,22 @@ impl NeuralNetwork {
     /// // Automatic file reading and formatting function coming soon
     /// let mut data: Vec<Input> = file();
     /// let mut net = NeuralNetwork::new(2, 2, 2, 1, ActivationFunction::Sigmoid);
-    /// let learning_rate = 1.0;
-    /// let model_name = net.learn(&mut data, categories, learning_rate, "gen").unwrap();
+    /// let model_name: String = net.learn(&mut data, 0.5, "gen", 100, 0.5, 10, 1, ActivationFunction::Sigmoid).unwrap();
     /// let new_data: Vec<Input> = net.test(data).unwrap();
     /// ```
-    pub fn learn(&mut self, data: &mut Vec<Input>, learning_rate: f32, name: &str, max_cycles: i32, distinguising_learning_rate: f32, distinguising_hidden_neurons: i32, distinguising_hidden_layers: i32, distinguising_activation: ActivationFunction) -> Result<String, DarjeelingError> { // The self model should do the generation
+    pub fn learn(
+        &mut self, 
+        data: &mut Vec<Input>, 
+        learning_rate: f32, 
+        name: &str, max_cycles: i32, 
+        distinguising_learning_rate: f32, distinguising_hidden_neurons: i32,
+        distinguising_hidden_layers: i32, distinguising_activation: ActivationFunction
+    ) -> Result<String, DarjeelingError> {
         let mut epochs: f32 = 0.0;
         let hidden_layers = self.node_array.len() - 2;
         let mut model_name: Option<String> = None;
         let mut outputs: Vec<Input> = vec![];
-        for _i in 0..max_cycles { // arbitrary constant
+        for _i in 0..max_cycles {
             #[allow(unused_assignments)]
             let mut mse = 0.0; // mse is for a single epoch
             data.shuffle(&mut thread_rng());
@@ -181,55 +187,50 @@ impl NeuralNetwork {
             if model_name.is_some() {
                 let mut new_model = categorize::NeuralNetwork::read_model(model_name.clone().unwrap()).unwrap();
                 match std::fs::remove_file(model_name.unwrap()) {
-                    Ok(_) => {},
+                    Ok(_) => {
+                        model_name = match new_model.learn(
+                            &mut outputs, 
+                            vec![Boolean(true), Boolean(false)], 
+                            distinguising_learning_rate, &("distinguishing".to_owned() + &name)) 
+                            {
+                                Ok((name, _err_percent, errmse)) => { mse = errmse; Some(name) },
+                                Err(error) => return Err(DarjeelingError::DisinguishingModelError(error.to_string()))
+                            };
+                    },
                     Err(err) => return Err(DarjeelingError::RemoveModelFailed(err.to_string()))
                 };
-                model_name = match new_model.learn(
-                    &mut outputs, 
-                    vec![Boolean(true), Boolean(false)], 
-                    distinguising_learning_rate, &("distinguishing".to_owned() + &name)) 
-                    {
-                        Ok((_net, name, _err_percent, errmse)) => { mse = errmse; Some(name) },
-                        Err(error) => return Err(DarjeelingError::DisinguishingModel(error))
-                    };
             } else {
                 let mut new_model = categorize::NeuralNetwork::new(self.node_array[self.answer.unwrap()].len() as i32, distinguising_hidden_neurons, 2, distinguising_hidden_layers, distinguising_activation);
                 match std::fs::remove_file(model_name.unwrap()) {
-                    Ok(_) => {},
+                    Ok(_) => {
+                        model_name = match new_model.learn(
+                            data, 
+                            vec![Boolean(true), Boolean(false)], 
+                            distinguising_learning_rate, 
+                            &("distinguishing".to_owned() + &name)) 
+                            {
+                                Ok((name, _err_percent, errmse)) => { mse = errmse; Some(name) },
+                                Err(error) => return Err(DarjeelingError::DisinguishingModelError(error.to_string()))
+                            };
+                    },
                     Err(err) => return Err(DarjeelingError::RemoveModelFailed(err.to_string()))
                 };
-                model_name = match new_model.learn(
-                    data, 
-                    vec![Boolean(true), Boolean(false)], 
-                    distinguising_learning_rate, 
-                    &("distinguishing".to_owned() + &name)) 
-                    {
-                        Ok((_net, name, _err_percent, errmse)) => { mse = errmse; Some(name) },
-                        Err(error) => return Err(DarjeelingError::DisinguishingModel(error))
-                    };
+                
             }
             
             self.backpropogate(learning_rate, hidden_layers as i32, mse);
 
-            // let _old_err_percent = err_percent;
             epochs += 1.0;
             println!("Epoch: {:?}", epochs);
-            //if err_percent - old_err_percent < 0.00000001 { break; }
-
         }
         #[allow(unused_mut)]
         let mut model_name: String;
         match self.write_model(&name) {
-
             Ok(m_name) => {
                 model_name = m_name;
             },
-
             Err(error) => return Err(error)
         }
-
-        // println!("Training: Finished with accuracy of {:?}/{:?} or {:?} percent after {:?} epochs", sum, count, err_percent, epochs);
-
         Ok(model_name)
     }
 
@@ -283,22 +284,16 @@ impl NeuralNetwork {
                 largest_node = node;
             }
         }
-
         largest_node
     }
     /// Goes back through the network adjusting the weights of the all the neurons based on their error signal
     fn backpropogate(&mut self, learning_rate: f32, hidden_layers: i32, mse: f32) {
-
         for answer in 0..self.node_array[self.answer.unwrap()].len() {
             if DEBUG { println!("Node: {:?}", self.node_array[self.answer.unwrap()][answer]); }
-
             self.node_array[self.answer.unwrap()][answer].compute_answer_err_sig_gen(mse);
-
             if DEBUG { println!("Error: {:?}", self.node_array[self.answer.unwrap()][answer].err_sig.unwrap()) }
         }
-
         self.adjust_hidden_weights(learning_rate, hidden_layers);
-
         // Adjusts weights for answer neurons
         for answer in 0..self.node_array[self.answer.unwrap()].len() {
             self.node_array[self.answer.unwrap()][answer].adjust_weights(learning_rate);
@@ -308,7 +303,6 @@ impl NeuralNetwork {
     #[allow(non_snake_case)]
     /// Adjusts the weights of all the hidden neurons in a network
     fn adjust_hidden_weights(&mut self, learning_rate: f32, hidden_layers: i32) {
-
         // HIDDEN represents the layer, while hidden represents the node of the layer
         for HIDDEN in 1..(hidden_layers + 1) as usize {            
             for hidden in 0..self.node_array[HIDDEN].len() {
@@ -350,14 +344,13 @@ impl NeuralNetwork {
     /// Also increments sum and count
     /// Err if string requested and float exceeds u8 limit (fix by parsing the floats and slicing them)
     fn self_analysis<'b>(&'b self, epochs: &mut Option<f32>, sum: &'b mut f32, count: &'b mut f32, data: &mut Vec<Input>, line: usize, expected_type: Types) -> Result<Vec<Types>, DarjeelingError> {
-
         // println!("answer {}", self.answer.unwrap());
         // println!("largest index {}", self.largest_node());
         // println!("{:?}", self);
         let brightest_node: &Node = &self.node_array[self.answer.unwrap()][self.largest_node()];
         let brightness: f32 = brightest_node.cached_output.unwrap();
 
-        if !(epochs.is_none()) {
+        if !(epochs.is_none()) { // This lets us use the same function for testing and training     
             if epochs.unwrap() % 10.0 == 0.0 && epochs.unwrap() != 0.0 {
                 println!("\n-------------------------\n");
                 println!("Epoch: {:?}", epochs);
@@ -370,9 +363,8 @@ impl NeuralNetwork {
         }
 
         if DEBUG { println!("Category: {:?} \nBrightness: {:?}", brightest_node.category.as_ref().unwrap(), brightness); }
-        if brightest_node.category.as_ref().unwrap().eq(&data[line].answer.as_ref().unwrap()) { println!("Correct Answer Chosen"); }
-
-        if brightest_node.category.as_ref().unwrap().eq(&data[line].answer.as_ref().unwrap()) {
+        if brightest_node.category.as_ref().unwrap().eq(&data[line].answer.as_ref().unwrap()) { 
+            if DEBUG { println!("Correct Answer Chosen"); }
             if DEBUG { println!("Sum++"); }
             *sum += 1.0;
         }
@@ -411,18 +403,21 @@ impl NeuralNetwork {
         Ok(ret)
     }
 
-    /// Serializes a trained model so it can be used later
+    /// Serializes a trained model as a .darj file so it can be used later
     /// 
     /// ## Returns
     /// The name of the model
     /// 
-    /// ## Err
-    /// ### WriteModelFailed:   Wraps the models name
-    /// ### ModelNameAlreadyExists: Wraps the potential model name
-    /// ### UnknownError: Wraps error
-    ///  
+    /// ## Error
+    /// ### WriteModelFailed:
+    /// Writing to the file failed
+    /// 
+    /// Wraps the models name
+    /// ### UnknownError:
+    /// Something else went wrong
+    /// 
+    /// Wraps error
     pub fn write_model(&mut self, name: &str) -> Result<String, DarjeelingError> {
-        
         let mut rng = rand::thread_rng();
         let file_num: u32 = rng.gen();
         let model_name: String = format!("model_{}_{}.darj", name, file_num);
@@ -454,22 +449,17 @@ impl NeuralNetwork {
                 serialized.push_str(format!("{}", self.activation_function).as_str());
                 // println!("Serialized: {:?}", serialized);
                 match fs::write(&model_name, serialized) {
-                    
                     Ok(()) => {
                         println!("Model {:?} Saved", file_num);
-
                         Ok(model_name)
                     },
-
                     Err(_error) => {
-
                         Err(DarjeelingError::WriteModelFailed(model_name))
                     }
                 }
             },
             Ok(true) => {
-                
-                Err(DarjeelingError::ModelNameAlreadyExists(model_name))
+                return self.write_model(name);
             },
             Err(error) => Err(DarjeelingError::UnknownError(error.to_string()))
         }
@@ -481,11 +471,11 @@ impl NeuralNetwork {
     /// - Model Name: The name(or more helpfully the path) of the model to be read
     /// 
     /// ## Returns
-    /// A neural network read from a serialized neural network file
+    /// A neural network read from a serialized .darj file
     /// 
     /// ## Err
     /// If the file cannnot be read, or if the file does not contain a valid serialized Neural Network
-    pub fn read_model<'b>(model_name: String) -> Result<NeuralNetwork, DarjeelingError<'static>> {
+    pub fn read_model(model_name: String) -> Result<NeuralNetwork, DarjeelingError> {
 
         println!("Loading model");
         

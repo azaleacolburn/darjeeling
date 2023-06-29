@@ -7,10 +7,12 @@ elocolburn@comcast.net
 # Installation
 Add the following to your `Cargo.toml` file
 ```
-darjeeling = "0.2.3"
+darjeeling = "0.3.0"
 ```
 
-# Example
+# Examples
+## Machine Learning Networks
+### Categorization
 This program reads from a file containing all possible 
 inputs to a binary logic gate, and all the correct answers.
 
@@ -83,6 +85,38 @@ Different problems work differently with different learning rates, although I re
     inputs  
     }
 ```
+### Generation
+
+This program doesn't have a large enough dataset to get interesting results.
+All it does is just create a network and 
+```rust
+    use darjeeling::{
+         generation::NeuralNetwork,
+         activation::ActivationFunction,
+         input::Input, 
+         // This file may not be avaliable
+         // Everything found here will be hyper-specific to your project.
+         tests::{categories_str_format, file}
+    };
+     
+    // A file with data
+    // To make sure the networked is properly trained, make sure it follows some sort of pattern
+    // This is just sample data, for accurate results, around 3800 datapoints is needed
+    // 1 2 3 4 5 6 7 8
+    // 3 2 5 4 7 6 1 8
+    // 0 2 5 4 3 6 1 8
+    // 7 2 3 4 9 6 1 8
+    // You also need to write the file input function
+    // Automatic file reading and formatting function coming soon
+    let mut data: Vec<Input> = file();
+    let mut net = NeuralNetwork::new(2, 2, 2, 1, ActivationFunction::Sigmoid);
+    let learning_rate = 1.0;
+    let model_name = net.learn(&mut data, categories, learning_rate, "gen").unwrap();
+    let new_data: Vec<Input> = net.test(data).unwrap();
+```
+
+
+## Dataframes and Series
 This program creates a test dataframe and series, then performs several test actions on them.
 
 I'm sorry about the formatting, I'm not very good at IO formatting

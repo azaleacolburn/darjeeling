@@ -1,3 +1,4 @@
+
 use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -11,15 +12,19 @@ pub enum Types {
 impl Types {
     
     pub fn display(&self) {
-
-        match self {
-            
+        match self {  
             Types::String(string) => print!("{}", string),
             Types::Integer(int) => print!("{}", int),
             Types::Float(float) => print!("{}", float),
             Types::Boolean(boolean) => print!("{}", boolean),
         };
 
+    }
+}
+
+impl Default for Types {
+    fn default() -> Self {
+        Types::Integer(Default::default())
     }
 }
 
