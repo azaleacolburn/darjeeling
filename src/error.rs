@@ -1,5 +1,8 @@
 use core::fmt;
-use std::any::TypeId;
+use std::{
+    any::TypeId,
+    error::Error
+};
 
 #[derive(Debug, Clone)]
 pub enum DarjeelingError {
@@ -85,6 +88,19 @@ impl<'a> fmt::Display for DarjeelingError {
                 "Non-Darjeeling error encountered: \n {:?}",
                 error
             )
+        }
+    }
+}
+
+impl Error for DarjeelingError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            DarjeelingError::ReadModelFunctionFailed(_message, failure) => {
+                Some(failure)
+            }
+            _ => {
+                None
+            }
         }
     }
 }

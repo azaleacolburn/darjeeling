@@ -13,7 +13,7 @@
     clippy::useless_conversion,
     dead_code
 )]
-#![feature(iter_collect_into)]
+#![feature(iter_collect_into, try_blocks)]
 pub static DEBUG: bool = false;
 
 pub mod input;

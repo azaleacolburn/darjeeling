@@ -1,7 +1,8 @@
-use std::{fmt::Debug, collections::hash_map::DefaultHasher};
+use std::{fmt::Debug, collections::hash_map::DefaultHasher, vec};
 use serde::Serialize;
 use crate::{types::Types, input::Input, error::DarjeelingError};
 use std::hash::{Hash, Hasher};
+
 static INITIAL_SIZE: usize = 10;
 
 // TODO: Fix hash overflow issue
@@ -15,16 +16,25 @@ pub struct DataFrame<'a> {
 
 // Managing same capacity is difficult
 impl<'a> DataFrame<'a> {
+    
+    /// Creates an empty dataframe with inner capacity of 10
+    pub fn new() -> DataFrame<'a> {
+        DataFrame { frame: vec![], row_labels: vec![], col_labels: vec![], inner_capacity: 10 }
+    }
 
     /// Creates a new Dataframe
-    pub fn new(mut frame: Vec<Vec<Types>>, row_labels: Vec<&'a str>, col_labels: Vec<&'a str>) -> DataFrame<'a> {
+    pub fn from_2d_array(mut frame: Vec<Vec<Types>>, row_labels: Vec<&'a str>, col_labels: Vec<&'a str>) -> DataFrame<'a> {
         let mut inner = 0;
         for i in 0..frame.len() {
             let len = frame[i].len();
             if len > inner { inner = len }
         }
-        for i in 0..frame.len() { unsafe { frame[i].set_len(inner) }; }
+        for i in 0..frame.len() {
+            let old = frame[i].capacity();
+            frame[i].reserve(inner * 4 - old);
+        }
         let outer = frame.len();
+        println!("unordered frame: {:?}", frame);
         let mut final_frame = DataFrame { frame, row_labels, col_labels, inner_capacity: inner };
         final_frame.rehash_dataframe(outer * 2);
         final_frame
@@ -59,7 +69,7 @@ impl<'a> DataFrame<'a> {
     /// If reallocation fails
     pub fn add_row(&mut self, label: &'a str, content: Vec<Types>) -> Result<(), DarjeelingError> {
         // Checks to make sure the dataframe is still valid
-        assert_eq!(self.row_labels.len(), self.frame.len());
+        //assert_eq!(self.row_labels.len(), self.frame.len());
         if self.row_labels.contains(&label) { return Err(DarjeelingError::RowAlreadyExists(format!("{}", label))); }
         if content.len() > self.inner_capacity { self.rehash_dataframe(content.len() * 2) }
         self.row_labels.push(label);
@@ -75,7 +85,10 @@ impl<'a> DataFrame<'a> {
         // Checks to make sure the dataframe is still valid
         // This was searching for an index of a label to delete instead of
         // adding the index to the end
-        assert_eq!(self.frame[0].capacity(), self.inner_capacity);
+        println!("inner capacity: {}\nframecapacity: {}", self.inner_capacity, self.frame[0].capacity());
+        if self.frame[0].capacity() != self.inner_capacity {
+            self.fix_inner_capacity();
+        }
         if self.col_labels.contains(&label) { return Err(DarjeelingError::RowAlreadyExists(format!("{}", label))); }
         if content.len() > self.inner_capacity { self.rehash_dataframe(content.len() * 2); }
 
@@ -114,7 +127,7 @@ impl<'a> DataFrame<'a> {
         self.row_labels.len()
     }
 
-    pub fn display(&self) {
+    pub fn display(&mut self) {
         for _i in 0..self.row_labels[0].len() + 2 {
             print!(" ");
         }
@@ -122,23 +135,26 @@ impl<'a> DataFrame<'a> {
             print!("{:?} ", i)
         }
         print!("\n");
-        for i in 0..self.row_labels.len() {
-            print!("{:?} ", self.row_labels[i]);
+        for row in &self.row_labels {
+            // self.fix_inner_capacity();
+            let display_row_index = self.label_index_row(row);
+            print!("row name: {}, index: {}", row, display_row_index);
             let longest = find_longest(&self.row_labels);
             let shortest = find_shortest(&self.row_labels);
-            if longest != self.row_labels[i].len() {
+            if longest != row.len() {
                 for _l in 0..longest - self.row_labels[0].len() {
                     print!(" ");
                 }
             }
-            for j in 0..self.col_labels.len() {
-                self.frame[j][i].display();
-                if longest != self.row_labels[j].len() && shortest != longest{
-                    for _k in 0..self.col_labels[j].len() + 2 {
+            for col in &self.col_labels {
+                let display_col_index = self.label_index_col(col);
+                self.frame[display_row_index as usize][display_col_index as usize].display();
+                if longest != col.len() && shortest != longest{
+                    for _k in 0..col.len() + 2 {
                         print!(" ");
                     }
                 } else {
-                    for _k in 0..self.col_labels[j].len() {
+                    for _k in 0..col.len() {
                         print!(" ");
                     }
                 }
@@ -162,7 +178,6 @@ impl<'a> DataFrame<'a> {
                                 } else {
                                     input.inputs.push(0.0);
                                 }
-                                
                             },
                             Types::Float(float) => {
                                 input.inputs.push(*float)
@@ -192,7 +207,7 @@ impl<'a> DataFrame<'a> {
     pub fn frame_to_generation_inputs(&self) -> Result<Vec<Input>, DarjeelingError> {
         let mut inputs: Vec<Input> = vec![];
         for i in 0..self.row_labels.len() {
-            let mut input: Input = Input::new(vec![], None);
+            let mut input = Input::new(vec![], None);
             for j in 0..self.col_labels.len() - 1 {
                 let wrapped = self.value_at_index(i, j);
                 match wrapped {
@@ -204,7 +219,6 @@ impl<'a> DataFrame<'a> {
                                 } else {
                                     input.inputs.push(0.0);
                                 }
-                                
                             },
                             Types::Float(float) => {
                                 input.inputs.push(*float)
@@ -235,29 +249,46 @@ impl<'a> DataFrame<'a> {
     }
 
     fn label_index_col(&self, label: &str) -> usize {
-        assert_eq!(self.frame[0].capacity(), self.inner_capacity);
         (hash_str(label) % self.inner_capacity as u64) as usize
     }
 
     fn rehash_dataframe(&mut self, new_capacity: usize) {
         // This starts with self.inner_capacity being old
-        let mut new_frame: Vec<Vec<Types>> = Vec::with_capacity(new_capacity);
+        let mut new_frame: Vec<Vec<Types>> = Vec::with_capacity(self.frame.len() * 2);
+        unsafe { new_frame.set_len(self.frame.len()) }
+        println!("capacity {}", new_frame.capacity());
+        println!("inner capacity: {}", self.inner_capacity);
+        self.fix_inner_capacity();
+        let old_capacity = self.inner_capacity;
         // Rehashes row
-        for i in 0..self.row_labels.len() {
-            let old_index = self.label_index_row(self.row_labels[i]);
-            let new_index = (hash_str(self.row_labels[i]) % new_capacity as u64) as usize; // Hashing has to be done manually since the capacitiy hasn't been updated
-            new_frame[new_index] = self.frame[old_index].clone();
+        println!("old_capacity: {}, new_capacity: {}", old_capacity, new_capacity);
+        for i in 0..self.row_labels.len() { 
+            new_frame[i].reserve(new_capacity - old_capacity); 
+            unsafe { new_frame[i].set_len(self.frame[i].len()) }
         }
+        println!("rows: {:?}", self.row_labels);
+        println!("cols: {:?}", self.col_labels);
+        println!("frame: {:?}", self.frame);
         // Rehashes cols
-        for i in 0..self.row_labels.len() {
-            for j in 0..self.col_labels.len() {
-                let old_index = self.label_index_col(self.col_labels[j]);
-                let new_index = (hash_str(self.row_labels[i]) % new_capacity as u64) as usize;
-                new_frame[i][new_index] = self.frame[i][old_index].clone();
+        for row in &self.row_labels {
+            for col in &self.col_labels {
+                let old_row = self.label_index_row(row);
+                let new_row = (hash_str(row) % new_capacity as u64) as usize;
+                let old_col = self.label_index_col(col);
+                let new_col = (hash_str(col) % new_capacity as u64) as usize;
+                println!("old_col: {}, new_col: {}, old_row: {}, new_row: {}", old_col, new_col, old_row, new_row);
+                new_frame[new_row][new_col] = self.frame[old_row][old_col].clone(); // i = 2 is the problem
             }
         }
         self.inner_capacity = new_capacity;
+        println!("inner capacity: {}\nnew frame capacity: {}", self.inner_capacity, self.frame[0].capacity());
         self.frame = new_frame;
+    }
+
+    fn fix_inner_capacity(&mut self) {
+        for i in 0..self.frame.len() {
+            self.frame[i].reserve(self.inner_capacity);
+        }
     }
 }
 
@@ -279,13 +310,15 @@ pub fn find_shortest(vec: &Vec<&str>) -> usize {
     shortest_len
 }
 
-pub fn search_remove<T>(vec: &mut Vec<T>, val: T) 
+pub fn search_remove<T>(vec: &mut Vec<T>, val: T)
     where T: PartialEq {
         for i in 0..vec.len() {
-            if vec[i] == val { vec.remove(i); }
-            break;
+            if vec[i] == val {
+                vec.remove(i);
+                break;
+            }
         }
-}
+    }
 
 fn hash_str(string: &str) -> u64 {
     let mut s = DefaultHasher::new();

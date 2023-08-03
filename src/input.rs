@@ -1,9 +1,7 @@
 use std::fmt::Display;
-
 use crate::types::Types;
 
 #[allow(dead_code)]
-
 #[derive(Debug, Clone)]
 /// Represents the input for the neural network
 pub struct Input {

@@ -7,7 +7,8 @@ use crate::{
     dataframe::DataFrame,
     series::Series, 
     types::{Types, self},
-    activation::ActivationFunction, generation
+    activation::ActivationFunction, 
+    generation
 };
 
 #[test]
@@ -193,7 +194,7 @@ fn dataframe_add_sub<'a>() {
         types::fmt_int_type_vec(vec![10, 11, 12]),
     ).unwrap(); 
     frame.display();
-    print!("{:?}\n", frame.index_at_labels("Label!", "col1"));
+    println!("{:?}\n", frame.index_at_labels("Label!", "col1"));
     frame.delete_row("Label!");
     let _ = frame.add_col(
         "col3", 
@@ -205,13 +206,14 @@ fn dataframe_add_sub<'a>() {
 }
 
 fn quick_frame() -> DataFrame<'static> {
-    DataFrame::new(
+    DataFrame::from_2d_array(
         vec![
+            // Each of inner vector is a row, each index is a column
             types::fmt_int_type_vec(vec![0, 1, 2]),
             types::fmt_str_type_vec(vec!["hello", "hi","heya"])
         ],
-        vec!["row1", "row2", "row3"],
-        vec!["col1", "col2"]
+        vec!["row1", "row2"],
+        vec!["col1", "col2", "col3"]
     )
 }
 
@@ -223,7 +225,7 @@ fn series_add_sub<'a>() {
     series.display();
     let mut new_series: Series<i32> = series.no_mut_add(Types::String("data5".to_string()), 5);
     new_series.display();
-    new_series.mut_sub(5).unwrap();
+    let _ = new_series.mut_sub(5);
     new_series.display();
     new_series.mut_add(Types::Integer(83), 6);
     new_series.display();
