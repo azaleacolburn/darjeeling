@@ -42,21 +42,25 @@ Different problems work differently with different learning rates, although I re
         let categories = NeuralNetwork::categories_format(vec!["0","1"]);
         let data = xor_file();
 
-
         let model_name: String = train_network_xor(data.clone(), categories.clone(), learning_rate).unwrap();
 
         test_network_xor(data, categories, model_name)
     }
-
+    
     fn train_network_xor(mut data:Vec<Input>, categories: Vec<String>, learning_rate: f32) -> Option<String> {
         let input_num: i32 = 2;
         let hidden_num: i32 = 2;
         let answer_num: i32 = 2;
         let hidden_layers: i32 = 1;
+        let model_name: &str = "xor";
+        // Creates a new Neural Network
         let mut net = NeuralNetwork::new(input_num, hidden_num, answer_num, hidden_layers);
-
-        
-        match net.learn(&mut data, categories, learning_rate).unwrap()
+        // Trains the Neural Network
+        match net.learn(&mut data, categories, learning_rate, model_name) {
+            // Mean Squared Error
+            Ok((model_name, _err_percent, _mse)) => Some(model_name),
+            Err(_err) => None
+        }
     }
 
     fn test_network_xor(data: Vec<Input>, categories: Vec<String>, model_name: String) {
