@@ -169,6 +169,17 @@ All it does is just create a network and
     let new_data: Vec<Input> = net.test(data).unwrap();
 ```
 
+# FAQ
+## Why is it called Darjeeling?
+Because that's the WiFi password at the Tea Shop where I do most of my programming.
+
+# Contribution
+If you want to contribute, check to todo, fork the code, and make a pull request whenever you're ready. I'm more than open to reviewing any code people want to add. I'd be happy to give any assistance to people wanting to contribute, including but not limited to teaching about Machine Learning, Rust, and how Darjeeling works. We welcome all experience levels here. Just email me if you need anything. If there's a bug that you can't/don't want to fix, open an issue.
+## Guidelines
+- Be respectful of all kinds of people and their differences.
+- Be kind.
+- Be patient to people of all experience and skill levels.
+
 # TODO:
 - Add Support for [Polars](https://www.pola.rs/) Dataframes
 
