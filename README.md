@@ -10,9 +10,53 @@ Add the following to your `Cargo.toml` file
 darjeeling = "0.3.1"
 ```
 
+# Basic Setup
+1. Create a network
+```rust
+    use darjeeling::{
+        categorize,
+        activation::ActivationFunction
+    };
+    let input_num = 2;
+    let hidden_num = 2;
+    let answer_num = 2;
+    let hidden_layers = 1;
+    let mut net = categorize::NeuralNetwork::new(input_num, hidden_num, answer_num, hidden_layers, ActivationFunction::Sigmoid);
+```
+2. Format your data as Inputs
+```rust
+    use darjeeling::{
+        types::Types,
+        input::Input
+    };
+    // Do this for every input
+    let float_inputs: Vec<f32> = vec![];
+    let answer_input: Types = Types::String("Bee");
+    let input = Input::new(float_inputs, answer_input);
+```
+Inputs represent a set of floating point numbers and which answer node they should be mapped to. For example, if the input is a picture of a Bee, the float_inputs might be the hex value of every pixel, while the answer input might be "Bee". Make sure the answer is always a valid category.
+3. Train your network
+```rust
+    let learning_rate: f32 = 3.0;
+    let categories: Vec<Types> = categories_str_format(vec!["Bee","3"]);
+    let data: Vec<Input> = data_fmt();
+    match net.learn(&mut data, categories, learning_rate, "bees3s")d {
+        // Do whatever you want with this data
+        Ok((model_name, err_percent, mse)) => Some(()),
+        Err(_err) => None
+    }
+```
+If the training is successful, the model_name is returned along with the percent of the training inputs the network correctly categorized on it's last epoch, and the mean squared error of the training.
+4. Test your network
+```rust
+    match categorize::NeuralNetwork::test(data, categories, model_name) {
+        Ok() => 
+    };
+```
+During testing, the answers in the input data should be set to None. The testing returns a vector of all the categories assigned to the data in the same order as the data.
+
 # Examples
-## Machine Learning Networks
-### Categorization
+## Categorization
 This program reads from a file containing all possible 
 inputs to a binary logic gate, and all the correct answers.
 
@@ -85,7 +129,7 @@ Different problems work differently with different learning rates, although I re
     inputs  
     }
 ```
-### Generation
+## Generation
 
 This program doesn't have a large enough dataset to get interesting results.
 All it does is just create a network and 

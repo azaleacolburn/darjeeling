@@ -203,11 +203,12 @@ impl NeuralNetwork {
     }
 
     /// Tests a pretrained model
-    pub fn test(mut data: Vec<Input>, categories: Vec<Types>, model_name: String) -> Result<Types, DarjeelingError> {
-        let mut sum:f32 = 0.0;
-        let mut count:f32 = 0.0;
-        let mut category: Option<Types> = None;
-        let mut mse: f32 = 0.0;
+    pub fn test(mut data: Vec<Input>, categories: Vec<Types>, model_name: String) -> Result<Vec<Types>, DarjeelingError> {
+        let mut sum = 0.0;
+        let mut count = 0.0;
+        // let mut category: Option<Types> = None;
+        let mut answers: Vec<Types> = vec![];
+        let mut mse = 0.0;
 
         let mut net: NeuralNetwork = match NeuralNetwork::read_model(model_name.clone()) {
 
@@ -220,21 +221,24 @@ impl NeuralNetwork {
             if DEBUG { println!("{:?}", net.node_array[net.answer.unwrap()][node].category); }
         }
 
-        data.shuffle(&mut thread_rng());
-
         for line in 0..data.len() {
-            if DEBUG { println!("Training Checkpoint One Passed") }
+            if DEBUG { println!("Testing Checkpoint One Passed") }
             net.assign_answers(&mut data, line as i32);
 
             net.push_downstream(&mut data, line as i32);
 
             if DEBUG { println!("Sum: {:?} Count: {:?}", sum, count); }
 
-            category = Some(net.self_analysis(&mut None, &mut sum, &mut count, &mut data, &mut mse, line).0);
+            
+            answers.push((
+                Some(
+                    net.self_analysis(&mut None, &mut sum, &mut count, &mut data, &mut mse, line).0
+                ))
+                .clone().expect("Wrapped in Some()"));
 
             if DEBUG { println!("Sum: {:?} Count: {:?}", sum, count); }
 
-            println!("Correct answer: {:?}", data[line].answer)
+            // println!("Correct answer: {:?}", data[line].answer)
         }
 
         // let _old_err_percent = err_percent;
@@ -242,7 +246,7 @@ impl NeuralNetwork {
         mse /= count;
         println!("Testing: Finished with accuracy of {:?}/{:?} or {:?} percent\nMSE: {}", sum, count, err_percent, mse);
 
-        Ok(category.unwrap())
+        Ok(answers)
     }
 
     /// Assigns categories to answer nodes based on a list of given categories
@@ -310,7 +314,7 @@ impl NeuralNetwork {
         let brightest_node: &Node = &self.node_array[self.answer.unwrap()][self.largest_node()];
         let brightness: f32 = brightest_node.cached_output.unwrap();
 
-        if !(epochs.is_none()) {
+        if !(epochs.is_none()) { // This won't happen during testing
             if epochs.unwrap() % 10.0 == 0.0 && epochs.unwrap() != 0.0 {
                 println!("\n-------------------------\n");
                 println!("Epoch: {:?}", epochs);

@@ -6,7 +6,7 @@ use crate::{
     categorize, 
     // dataframe::DataFrame,
     // series::Series, 
-    types::{Types, self},
+    types::Types,
     activation::ActivationFunction, 
     generation
 };
