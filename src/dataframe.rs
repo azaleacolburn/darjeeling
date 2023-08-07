@@ -1,3 +1,5 @@
+// Deprecated
+
 use std::{fmt::Debug, collections::hash_map::DefaultHasher, vec};
 use serde::Serialize;
 use crate::{types::Types, input::Input, error::DarjeelingError};

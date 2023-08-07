@@ -5,7 +5,7 @@ use crate::{
     DEBUG, 
     categorize, 
     // dataframe::DataFrame,
-    series::Series, 
+    // series::Series, 
     types::{Types, self},
     activation::ActivationFunction, 
     generation

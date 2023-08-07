@@ -1,12 +1,12 @@
 [package]
 name = "darjeeling"
-authors = ["Elo Colburn elocolburn@comcast.net"]
-version = "0.3.0"
-description = "Machine learning tools for rust. Currently comprising of categorization neural network model training"
+authors = ["Azalea Colburn elocolburn@comcast.net"]
+version = "0.3.1"
+description = "Machine learning tools for rust. Currently comprising of categorization and generation neural network model training"
 edition = "2021"
 license = "MIT"
 rust-version = "1.66.0"
-keywords = ["machine-learning", "categorization", "deep-learning", "neural-networks"]
+keywords = ["machine-learning", "categorization", "deep-learning", "neural-networks", "generative"]
 exclude = [
     "dataframe_plan.md",
     "sertest",

@@ -7,7 +7,7 @@ elocolburn@comcast.net
 # Installation
 Add the following to your `Cargo.toml` file
 ```
-darjeeling = "0.3.0"
+darjeeling = "0.3.1"
 ```
 
 # Examples
@@ -115,100 +115,7 @@ All it does is just create a network and
     let new_data: Vec<Input> = net.test(data).unwrap();
 ```
 
-
-## Dataframes and Series
-This program creates a test dataframe and series, then performs several test actions on them.
-
-I'm sorry about the formatting, I'm not very good at IO formatting
-
-Feel Free to reach out and offer a better DataFrame display function
-
-Expected Output:
-```
-       "col1" "col2" "col3" 
- "row1" 0    1    2    
- "row2" 3    4    5    
- "row3" 6    7    8    
-       "col1" "col2" "col3" 
- "row1"   0      1      2      
- "row2"   3      4      5      
- "row3"   6      7      8      
- "Label!" 10    11    12    
-       "col1" "col2" "col3" 
- "row1" 0    1    2    
- "row2" 3    4    5    
- "row3" 6    7    8
-
-1 "data1"
-2 "data2"
-3 "data3"
-
-
-1 "data1"
-2 "data2"
-3 "data3"
-4 "data4"
-
-
-1 "data1"
-2 "data2"
-3 "data3"
-4 "data4"
-5 "data5"
-
-
-1 "data1"
-2 "data2"
-3 "data3"
-4 "data4"
-```
-```rust
-    fn dataframe_add_sub() {
-        let mut frame: DataFrame<i32> = quick_frame();
-        frame.display();
-        frame.add_row("Label!", 
-            Point::point_vector(
-                frame.get_cols_len() - 1 as usize, 
-                vec![10,11,12]
-            )
-        );
-        frame.display();
-        frame.delete_row("Label!").unwrap();
-        frame.display()
-    }
-  
-    fn series_add_sub() {
-        let mut series = quick_series();
-        series.display();
-        series.mut_add("data4", 4);
-        series.display();
-        let mut new_series: Series<&str, i32> = series.no_mut_add("data5", 5);
-        new_series.display();
-        new_series.mut_sub(5).unwrap();
-        new_series.display();
-    }
-
-    // Generates example datastructures
-    fn quick_frame() -> DataFrame<'static, i32> {
-        DataFrame::new(
-            vec![
-                vec![0,1,2],
-                vec![3,4,5],
-                vec![6,7,8]
-            ],
-            vec!["row1", "row2", "row3"],
-            vec!["col1", "col2", "col3"]
-        )
-    }
-
-    fn quick_series() -> Series<&'static str, i32> {
-
-        Series::new(
-            vec!["data1", "data2", "data3"],
-            vec![1,2,3]
-        )
-    }
-```
-
 # TODO:
-- Fix Dataframes
+- Add Support for [Polars](https://www.pola.rs/) Dataframes
+
+Dataframes are now deprecated
