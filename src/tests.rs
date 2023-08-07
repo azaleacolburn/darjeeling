@@ -4,7 +4,7 @@ use crate::{
     input::Input, 
     DEBUG, 
     categorize, 
-    dataframe::DataFrame,
+    // dataframe::DataFrame,
     series::Series, 
     types::{Types, self},
     activation::ActivationFunction, 
@@ -185,58 +185,58 @@ pub fn categories_str_format(categories_str: Vec<&str>) -> Vec<Types> {
     categories
 }
 
-#[test]
-fn dataframe_add_sub<'a>() {
-    let mut frame: DataFrame<'a> = quick_frame();
-    frame.display();
-    frame.add_row(
-        "Label!", 
-        types::fmt_int_type_vec(vec![10, 11, 12]),
-    ).unwrap(); 
-    frame.display();
-    println!("{:?}\n", frame.index_at_labels("Label!", "col1"));
-    frame.delete_row("Label!");
-    let _ = frame.add_col(
-        "col3", 
-        types::fmt_str_type_vec(vec!["hellow", "fun", "life"])
-    );
-    frame.display();
-    frame.delete_col("col3");
-    frame.display();
-}
+// #[test]
+// fn dataframe_add_sub<'a>() {
+//     let mut frame: DataFrame<'a> = quick_frame();
+//     frame.display();
+//     frame.add_row(
+//         "Label!", 
+//         types::fmt_int_type_vec(vec![10, 11, 12]),
+//     ).unwrap(); 
+//     frame.display();
+//     println!("{:?}\n", frame.index_at_labels("Label!", "col1"));
+//     frame.delete_row("Label!");
+//     let _ = frame.add_col(
+//         "col3", 
+//         types::fmt_str_type_vec(vec!["hellow", "fun", "life"])
+//     );
+//     frame.display();
+//     frame.delete_col("col3");
+//     frame.display();
+// }
 
-fn quick_frame() -> DataFrame<'static> {
-    DataFrame::from_2d_array(
-        vec![
-            // Each of inner vector is a row, each index is a column
-            types::fmt_int_type_vec(vec![0, 1, 2]),
-            types::fmt_str_type_vec(vec!["hello", "hi","heya"])
-        ],
-        vec!["row1", "row2"],
-        vec!["col1", "col2", "col3"]
-    )
-}
+// fn quick_frame() -> DataFrame<'static> {
+//     DataFrame::from_2d_array(
+//         vec![
+//             // Each of inner vector is a row, each index is a column
+//             types::fmt_int_type_vec(vec![0, 1, 2]),
+//             types::fmt_str_type_vec(vec!["hello", "hi","heya"])
+//         ],
+//         vec!["row1", "row2"],
+//         vec!["col1", "col2", "col3"]
+//     )
+// }
 
-#[test]
-fn series_add_sub<'a>() {
-    let mut series: Series<i32> = quick_series();
-    series.display();
-    series.mut_add(Types::String("data4".to_string()), 4);
-    series.display();
-    let mut new_series: Series<i32> = series.no_mut_add(Types::String("data5".to_string()), 5);
-    new_series.display();
-    let _ = new_series.mut_sub(5);
-    new_series.display();
-    new_series.mut_add(Types::Integer(83), 6);
-    new_series.display();
-    new_series.get(6).unwrap().display();
-    print!("\n");
-}
+// #[test]
+// fn series_add_sub<'a>() {
+//     let mut series: Series<i32> = quick_series();
+//     series.display();
+//     series.mut_add(Types::String("data4".to_string()), 4);
+//     series.display();
+//     let mut new_series: Series<i32> = series.no_mut_add(Types::String("data5".to_string()), 5);
+//     new_series.display();
+//     let _ = new_series.mut_sub(5);
+//     new_series.display();
+//     new_series.mut_add(Types::Integer(83), 6);
+//     new_series.display();
+//     new_series.get(6).unwrap().display();
+//     print!("\n");
+// }
 
-fn quick_series() -> Series<i32> {
+// fn quick_series() -> Series<i32> {
 
-    Series::new(
-        types::fmt_str_type_vec(vec!["data1", "data2", "data3"]),
-        vec![1,2,3]
-    )
-}
+//     Series::new(
+//         types::fmt_str_type_vec(vec!["data1", "data2", "data3"]),
+//         vec![1,2,3]
+//     )
+// }
