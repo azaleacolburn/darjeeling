@@ -8,7 +8,11 @@ license = "MIT"
 rust-version = "1.66.0"
 keywords = ["machine-learning", "categorization", "deep-learning", "neural-networks"]
 exclude = [
-    "training_data/"
+    "dataframe_plan.md",
+    "sertest",
+    "xor",
+    "training_data/",
+    "training_data/*"
 ]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
