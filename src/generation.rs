@@ -201,21 +201,16 @@ impl NeuralNetwork {
                 };
             } else {
                 let mut new_model = categorize::NeuralNetwork::new(self.node_array[self.answer.unwrap()].len() as i32, distinguising_hidden_neurons, 2, distinguising_hidden_layers, distinguising_activation);
-                match std::fs::remove_file(model_name.unwrap()) {
-                    Ok(_) => {
-                        model_name = match new_model.learn(
-                            data, 
-                            vec![Boolean(true), Boolean(false)], 
-                            distinguising_learning_rate, 
-                            &("distinguishing".to_owned() + &name)) 
-                            {
-                                Ok((name, _err_percent, errmse)) => { mse = errmse; Some(name) },
-                                Err(error) => return Err(DarjeelingError::DisinguishingModelError(error.to_string()))
-                            };
-                    },
-                    Err(err) => return Err(DarjeelingError::RemoveModelFailed(err.to_string()))
-                };
-                
+
+                model_name = match new_model.learn(
+                    data, 
+                    vec![Boolean(true), Boolean(false)], 
+                    distinguising_learning_rate, 
+                    &("distinguishing".to_owned() + &name)) 
+                    {
+                        Ok((name, _err_percent, errmse)) => { mse = errmse; Some(name) },
+                        Err(error) => return Err(DarjeelingError::DisinguishingModelError(error.to_string()))
+                    };                
             }
             
             self.backpropogate(learning_rate, hidden_layers as i32, mse);
