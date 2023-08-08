@@ -154,7 +154,7 @@ impl NeuralNetwork {
     /// // Automatic file reading and formatting function coming soon
     /// let mut data: Vec<Input> = file();
     /// let mut net = NeuralNetwork::new(2, 2, 2, 1, ActivationFunction::Sigmoid);
-    /// let model_name: String = net.learn(&mut data, 0.5, "gen", 100, 0.5, 10, 1, ActivationFunction::Sigmoid).unwrap();
+    /// let model_name: String = net.learn(&mut data, 0.5, "gen", 100, 0.5, 10, 1, ActivationFunction::Sigmoid, 99.0).unwrap();
     /// let new_data: Vec<Input> = net.test(data).unwrap();
     /// ```
     pub fn learn(

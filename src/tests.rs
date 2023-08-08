@@ -13,13 +13,15 @@ use crate::{
 
 #[test]
 pub fn train_test_xor() {
-    let learning_rate:f32 = 3.0;
-    let categories: Vec<Types> = categories_str_format(vec!["1","0"]);
-    let data: Vec<Input> = xor_file();
+    let learning_rate:f32 = 0.1;
+    let categories: Vec<Types> = categories_float_format(vec![1.0, 0.0]);
+    let mut data: Vec<Input> = xor_file();
 
     // Panics if unwraps a None value
     let model_name: String = train_network_xor(data.clone(), categories.clone(), learning_rate).unwrap();
-
+    data.iter_mut().for_each(|mut input| {
+        input.answer = None;
+    });
     categorize::NeuralNetwork::test(data, categories, model_name).unwrap();
 }   
 
@@ -57,7 +59,7 @@ pub fn xor_file<'a>() -> Vec<Input> {
         let init_inputs: Vec<&str> = line.split(";").collect();
         // Confused about how this is supposed to work
         let float_inputs: Vec<f32> = vec![init_inputs[0].split(" ").collect::<Vec<&str>>()[0].parse().unwrap(), init_inputs[0].split(" ").collect::<Vec<&str>>()[1].parse().unwrap()];
-        let answer_inputs: Types = Types::String((init_inputs[init_inputs.len()-1]).to_string());// TODO: Figure out what should be the row's answer; the last of a line for     
+        let answer_inputs: Types = Types::Float((init_inputs[init_inputs.len()-1]).parse().unwrap());// TODO: Figure out what should be the row's answer; the last of a line for     
         let input: Input = Input::new(float_inputs, Some(answer_inputs));
         inputs.push(input);
     }
@@ -180,6 +182,15 @@ pub fn categories_str_format(categories_str: Vec<&str>) -> Vec<Types> {
     let mut categories:Vec<Types> = vec![];
     for category in categories_str {
         categories.push(Types::String(category.to_string()));
+    }
+
+    categories
+}
+
+pub fn categories_float_format(categories_str: Vec<f32>) -> Vec<Types> {
+    let mut categories:Vec<Types> = vec![];
+    for category in categories_str {
+        categories.push(Types::Float(category));
     }
 
     categories

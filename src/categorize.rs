@@ -96,11 +96,15 @@ impl NeuralNetwork {
                     })
             });
         let mut params = 0;
-        for i in 0..net.node_array.len() {
-            for j in 0..net.node_array[i].len() {
-                params += 1 + net.node_array[i][j].links as u128;
-            }
-        }
+        (0..net.node_array.len())
+            .into_iter()
+            .for_each(|i| {
+                (0..net.node_array[i].len())
+                    .into_iter()
+                    .for_each(|j| {
+                        params += 1 + net.node_array[i][j].links as u128;
+                    })
+            });
         net.parameters = Some(params);
         net
     }
@@ -153,7 +157,7 @@ impl NeuralNetwork {
     /// let mut data: Vec<Input> = xor_file();
     /// let mut net = NeuralNetwork::new(2, 2, 2, 1, ActivationFunction::Sigmoid);
     /// let learning_rate = 1.0;
-    /// let (model_name, error_percentage, mse) = net.learn(&mut data, categories, learning_rate, "xor").unwrap();
+    /// let (model_name, error_percentage, mse) = net.learn(&mut data, categories, learning_rate, "xor", 99.0).unwrap();
     /// ```
     pub fn learn<'b>(
         &'b mut self, 
@@ -171,7 +175,7 @@ impl NeuralNetwork {
         let mut mse: f32 = 0.0;
 
         self.categorize(categories);
-
+        
         while err_percent < target_err_percent {
             count = 0.0;
             sum = 0.0;
@@ -180,7 +184,7 @@ impl NeuralNetwork {
             for line in 0..data.len() {
                 dbg_println!("Training Checkpoint One Passed");
                 
-                self.assign_answers(data, line);
+                self.assign_answers(&mut data[line]);
 
                 self.push_downstream(data, line);
 
@@ -201,14 +205,11 @@ impl NeuralNetwork {
             //if err_percent - old_err_percent < 0.00000001 { break; }
 
         }
-        #[allow(unused_mut)]
-        let mut model_name: String;
+        let model_name: String;
         match self.write_model(&name) {
-
             Ok(m_name) => {
                 model_name = m_name;
             },
-
             Err(err) => return Err(err),
         }
 
@@ -238,7 +239,10 @@ impl NeuralNetwork {
 
         for line in 0..data.len() {
             dbg_println!("Testing Checkpoint One Passed");
-            net.assign_answers(&mut data, line);
+            if data[line].answer.is_some() {
+                net.assign_answers(&mut data[line]);
+            }
+            ; // Do we actually want to do this?
             net.push_downstream(&mut data, line);
             dbg_println!("Sum: {:?} Count: {:?}", sum, count);            
             answers.push((
@@ -271,12 +275,12 @@ impl NeuralNetwork {
             });
     }
     
-    fn assign_answers(&mut self, data: &mut Vec<Input>, line: usize) {
+    fn assign_answers(&mut self, input: &mut Input) {
         let _ = self.node_array[self.answer.unwrap()]
             .par_iter_mut()
             .for_each(|mut node| {
-                println!("{:?}", data[line]);
-                if node.category.as_ref().unwrap() == data[line].answer.as_ref().unwrap() {
+                println!("{:?}", input);
+                if node.category.as_ref().unwrap() == input.answer.as_ref().unwrap() {
                     node.correct_answer = Some(1.0);
                 } else {
                     node.correct_answer = Some(0.0);
@@ -345,11 +349,13 @@ impl NeuralNetwork {
         }
 
         dbg_println!("Category: {:?} \nBrightness: {:?}", brightest_node.category.as_ref().unwrap(), brightness);
-        if brightest_node.category.as_ref().unwrap().eq(&data[line].answer.as_ref().unwrap()) {
-            dbg_println!("Sum++");
-            *sum += 1.0;
+        if data[line].answer.is_some() {
+            if brightest_node.category.as_ref().unwrap().eq(&data[line].answer.as_ref().unwrap()) {
+                dbg_println!("Sum++");
+                *sum += 1.0;
+            }
+            *count += 1.0;
         }
-        *count += 1.0;
 
         (brightest_node.category.clone().unwrap(), NeuralNetwork::calculate_err_for_generation_model(mse, *sum, *count))
     }
@@ -577,5 +583,9 @@ impl NeuralNetwork {
         // println!("node array {:?}", net.node_array);
 
         Ok(net)
+    }
+
+    fn set_activation_func(&mut self, new_activation_function: ActivationFunction) {
+        self.activation_function = new_activation_function;
     }
 }
