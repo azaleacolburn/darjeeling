@@ -9,6 +9,7 @@ use crate::{
 use std::{fs, path::Path};
 use serde::{Deserialize, Serialize};
 use rand::{Rng, seq::SliceRandom, thread_rng};
+use rayon::prelude::*;
 
 /// The top-level neural network struct
 /// sensor and answer represents which layer sensor and answer are on
@@ -251,41 +252,40 @@ impl NeuralNetwork {
 
     /// Assigns categories to answer nodes based on a list of given categories
     fn categorize(&mut self, categories: Vec<Types>) {
-        let mut count:usize = 0;
-        self.node_array[self.answer.unwrap()].iter_mut().for_each(|node| {
-            node.category = Some(categories[count].clone());
-            count += 1;
-        });
+        let mut count: usize = 0;
+        self.node_array[self.answer.unwrap()]
+            .iter_mut()
+            .for_each(|node| {
+                node.category = Some(categories[count].clone());
+                count += 1;
+            });
     }
     
-    fn assign_answers(&mut self, data: &mut Vec<Input>, line: i32){
-        for node in 0..self.node_array[self.answer.unwrap()].len() {
-            println!("{:?}", data[line as usize]);
-            if self.node_array[self.answer.unwrap()][node].category.as_ref().unwrap() == data[line as usize].answer.as_ref().unwrap() {
-                self.node_array[self.answer.unwrap()][node].correct_answer = Some(1.0);
-            } else {
-                self.node_array[self.answer.unwrap()][node].correct_answer = Some(0.0);
-            }
-        }
+    fn assign_answers(&mut self, data: &mut Vec<Input>, line: i32) {
+        let _ = self.node_array[self.answer.unwrap()]
+            .par_iter_mut()
+            .for_each(|mut node| {
+                println!("{:?}", data[line as usize]);
+                if node.category.as_ref().unwrap() == data[line as usize].answer.as_ref().unwrap() {
+                    node.correct_answer = Some(1.0);
+                } else {
+                    node.correct_answer = Some(0.0);
+                }
+            });
     }
 
     /// Passes in data to the sensors, pushs data 'downstream' through the network
     fn push_downstream(&mut self, data: &mut Vec<Input>, line: i32) {
-
         // Passes in data for input layer
         for i in 0..self.node_array[self.sensor.unwrap()].len() {
             let input  = data[line as usize].inputs[i];
-
             self.node_array[self.sensor.unwrap()][i].cached_output = Some(input);
         }
 
         // Feed-forward values for hidden and output layers
         for layer in 1..self.node_array.len() {
-
             for node in 0..self.node_array[layer].len() {
-
                 for prev_node in 0..self.node_array[layer-1].len() {
-                    
                     // self.node_array[layer][node].link_vals.push(self.node_array[layer-1][prev_node].cached_output.unwrap());
                     self.node_array[layer][node].link_vals[prev_node] = Some(self.node_array[layer-1][prev_node].cached_output.unwrap());
                     // I think this line needs to be un-commented
@@ -344,12 +344,13 @@ impl NeuralNetwork {
     /// Finds the index and the brightest node in an array and returns it
     fn largest_node(&self) -> usize {
         let mut largest_node = 0;
-        for node in 0..self.node_array[self.answer.unwrap()].len() {
-            if self.node_array[self.answer.unwrap()][node].cached_output > self.node_array[self.answer.unwrap()][largest_node].cached_output {
-                largest_node = node;
-            }
-        }
-
+        (0..self.node_array[self.answer.unwrap()].len())
+            .into_iter()
+            .for_each(|node_i| {
+                if self.node_array[self.answer.unwrap()][node_i].cached_output > self.node_array[self.answer.unwrap()][largest_node].cached_output {
+                    largest_node = node_i;
+                }
+            });
         largest_node
     }
     /// Goes back through the network adjusting the weights of the all the neurons based on their error signal

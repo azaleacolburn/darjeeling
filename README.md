@@ -155,7 +155,7 @@ All it does is just create a network and
      
     // A file with data
     // To make sure the networked is properly trained, make sure it follows some sort of pattern
-    // This is just sample data, for accurate results, around 3800 datapoints is needed
+    // This is just sample data, for accurate results, around 3800 datapoints are needed
     // 1 2 3 4 5 6 7 8
     // 3 2 5 4 7 6 1 8
     // 0 2 5 4 3 6 1 8
@@ -182,5 +182,6 @@ If you want to contribute, check to todo, fork the code, and make a pull request
 
 # TODO:
 - Add Support for [Polars](https://www.pola.rs/) Dataframes
+- Optimize
 
 Dataframes are now deprecated
