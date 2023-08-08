@@ -11,7 +11,7 @@ Machine learning and data manipulation tools for Rust
 elocolburn@comcast.net
 
 # Installation
-Add the following to your `Cargo.toml` file
+Add the following dependencies to your `Cargo.toml` file
 ```
 darjeeling = "0.3.2"
 ```
