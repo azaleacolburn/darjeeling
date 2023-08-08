@@ -46,7 +46,8 @@ Inputs represent a set of floating point numbers and which answer node they shou
     let learning_rate: f32 = 3.0;
     let categories: Vec<Types> = categories_str_format(vec!["Bee","3"]);
     let data: Vec<Input> = data_fmt();
-    match net.learn(&mut data, categories, learning_rate, "bees3s")d {
+    let target_err_percent = 95.0;
+    match net.learn(&mut data, categories, learning_rate, "bees3s", target_err_percent) {
         // Do whatever you want with this data
         Ok((model_name, err_percent, mse)) => Some(()),
         Err(_err) => None
@@ -55,8 +56,12 @@ Inputs represent a set of floating point numbers and which answer node they shou
 If the training is successful, the model_name is returned along with the percent of the training inputs the network correctly categorized on it's last epoch, and the mean squared error of the training.
 4. Test your network
 ```rust
+    // Do whatever you want with this data
     match categorize::NeuralNetwork::test(data, categories, model_name) {
-        Ok() => 
+        // Vec<Types>
+        Ok(types) => {},
+        // DarjeelingError
+        Err(err) => {}
     };
 ```
 During testing, the answers in the input data should be set to None. The testing returns a vector of all the categories assigned to the data in the same order as the data.
@@ -97,10 +102,11 @@ Different problems work differently with different learning rates, although I re
         let answer_num: i32 = 2;
         let hidden_layers: i32 = 1;
         let model_name: &str = "xor";
+        let target_err_percent =  99.0;
         // Creates a new Neural Network
         let mut net = NeuralNetwork::new(input_num, hidden_num, answer_num, hidden_layers);
         // Trains the Neural Network
-        match net.learn(&mut data, categories, learning_rate, model_name) {
+        match net.learn(&mut data, categories, learning_rate, model_name, target_err_percent) {
             // Mean Squared Error
             Ok((model_name, _err_percent, _mse)) => Some(model_name),
             Err(_err) => None

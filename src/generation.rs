@@ -163,7 +163,8 @@ impl NeuralNetwork {
         learning_rate: f32, 
         name: &str, max_cycles: i32, 
         distinguising_learning_rate: f32, distinguising_hidden_neurons: i32,
-        distinguising_hidden_layers: i32, distinguising_activation: ActivationFunction
+        distinguising_hidden_layers: i32, distinguising_activation: ActivationFunction,
+        distinguishing_target_err_percent: f32
     ) -> Result<String, DarjeelingError> {
         let mut epochs: f32 = 0.0;
         let hidden_layers = self.node_array.len() - 2;
@@ -191,7 +192,7 @@ impl NeuralNetwork {
                         model_name = match new_model.learn(
                             &mut outputs, 
                             vec![Boolean(true), Boolean(false)], 
-                            distinguising_learning_rate, &("distinguishing".to_owned() + &name)) 
+                            distinguising_learning_rate, &("distinguishing".to_owned() + &name), distinguishing_target_err_percent) 
                             {
                                 Ok((name, _err_percent, errmse)) => { mse = errmse; Some(name) },
                                 Err(error) => return Err(DarjeelingError::DisinguishingModelError(error.to_string()))
@@ -206,7 +207,7 @@ impl NeuralNetwork {
                     data, 
                     vec![Boolean(true), Boolean(false)], 
                     distinguising_learning_rate, 
-                    &("distinguishing".to_owned() + &name)) 
+                    &("distinguishing".to_owned() + &name), distinguishing_target_err_percent) 
                     {
                         Ok((name, _err_percent, errmse)) => { mse = errmse; Some(name) },
                         Err(error) => return Err(DarjeelingError::DisinguishingModelError(error.to_string()))

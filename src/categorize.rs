@@ -11,6 +11,13 @@ use serde::{Deserialize, Serialize};
 use rand::{Rng, seq::SliceRandom, thread_rng};
 use rayon::prelude::*;
 
+macro_rules! dbg_println {
+    // `()` indicates that the macro takes no argument.
+    ($($arg:tt)*) => {
+        if DEBUG { println!($($arg)*) }
+    };
+}
+
 /// The top-level neural network struct
 /// sensor and answer represents which layer sensor and answer are on
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -58,7 +65,7 @@ impl NeuralNetwork {
         for i in 1..hidden_layers + 1 {
             let mut hidden_vec:Vec<Node> = vec![];
             let hidden_links = net.node_array[(i - 1) as usize].len();
-            if DEBUG { println!("Hidden Links: {:?}", hidden_links) }
+            dbg_println!("Hidden Links: {:?}", hidden_links);
             for _j in 0..hidden_num{
                 hidden_vec.push(Node { link_weights: vec![], link_vals: vec![], links: hidden_links, err_sig: None, correct_answer: None, cached_output: None, category: None, b_weight: None });
             }
@@ -72,16 +79,22 @@ impl NeuralNetwork {
             net.node_array[net.answer.unwrap()].push(Node { link_weights: vec![], link_vals: vec![], links: answer_links, err_sig: None, correct_answer: None, cached_output: Some(0.0), category: None, b_weight: None });
         }
         
-        for layer in &mut net.node_array{
-            for node in layer{
-                node.b_weight = Some(rng.gen_range(-0.5..0.5));
-                if DEBUG { println!("Made it to pushing link weights") }
-                for _i in 0..node.links {
-                    node.link_weights.push(rng.gen_range(-0.5..0.5));
-                    node.link_vals.push(None);
-                }
-            }
-        }
+        net.node_array
+            .iter_mut()
+            .for_each(|layer| {
+                layer
+                    .iter_mut()
+                    .for_each(|mut node| {
+                        node.b_weight = Some(rng.gen_range(-0.5..0.5));
+                        dbg_println!("Made it to pushing link weights");
+                        (0..node.links)
+                            .into_iter()
+                            .for_each(|_| {
+                                node.link_weights.push(rng.gen_range(-0.5..0.5));
+                                node.link_vals.push(None);
+                            })
+                    })
+            });
         let mut params = 0;
         for i in 0..net.node_array.len() {
             for j in 0..net.node_array[i].len() {
@@ -147,7 +160,8 @@ impl NeuralNetwork {
         data: &mut Vec<Input>, 
         categories: Vec<Types>, 
         learning_rate: f32, 
-        name: &str
+        name: &str,
+        target_err_percent: f32
     ) -> Result<(String, f32, f32), DarjeelingError> {
         let mut epochs: f32 = 0.0;
         let mut sum: f32 = 0.0;
@@ -158,23 +172,23 @@ impl NeuralNetwork {
 
         self.categorize(categories);
 
-        while err_percent < 90.0 {
+        while err_percent < target_err_percent {
             count = 0.0;
             sum = 0.0;
             data.shuffle(&mut thread_rng());
 
             for line in 0..data.len() {
-                if DEBUG { println!("Training Checkpoint One Passed") }
+                dbg_println!("Training Checkpoint One Passed");
                 
-                self.assign_answers(data, line as i32);
+                self.assign_answers(data, line);
 
-                self.push_downstream(data, line as i32);
+                self.push_downstream(data, line);
 
-                if DEBUG { println!("Sum: {:?} Count: {:?}", sum, count); }
+                dbg_println!("Sum: {:?} Count: {:?}", sum, count);
 
                 self.self_analysis(&mut Some(epochs), &mut sum, &mut count, data, &mut mse, line);
 
-                if DEBUG { println!("Sum: {:?} Count: {:?}", sum, count); }
+                dbg_println!("Sum: {:?} Count: {:?}", sum, count);
                 
                 self.backpropogate(learning_rate, hidden_layers as i32);
             }
@@ -219,25 +233,21 @@ impl NeuralNetwork {
 
         for node in 0..net.node_array[net.answer.unwrap()].len() {
             net.node_array[net.answer.unwrap()][node].category = Some(categories[node].clone());
-            if DEBUG { println!("{:?}", net.node_array[net.answer.unwrap()][node].category); }
+            dbg_println!("{:?}", net.node_array[net.answer.unwrap()][node].category);
         }
 
         for line in 0..data.len() {
-            if DEBUG { println!("Testing Checkpoint One Passed") }
-            net.assign_answers(&mut data, line as i32);
-
-            net.push_downstream(&mut data, line as i32);
-
-            if DEBUG { println!("Sum: {:?} Count: {:?}", sum, count); }
-
-            
+            dbg_println!("Testing Checkpoint One Passed");
+            net.assign_answers(&mut data, line);
+            net.push_downstream(&mut data, line);
+            dbg_println!("Sum: {:?} Count: {:?}", sum, count);            
             answers.push((
                 Some(
                     net.self_analysis(&mut None, &mut sum, &mut count, &mut data, &mut mse, line).0
                 ))
                 .clone().expect("Wrapped in Some()"));
 
-            if DEBUG { println!("Sum: {:?} Count: {:?}", sum, count); }
+            dbg_println!("Sum: {:?} Count: {:?}", sum, count);
 
             // println!("Correct answer: {:?}", data[line].answer)
         }
@@ -261,12 +271,12 @@ impl NeuralNetwork {
             });
     }
     
-    fn assign_answers(&mut self, data: &mut Vec<Input>, line: i32) {
+    fn assign_answers(&mut self, data: &mut Vec<Input>, line: usize) {
         let _ = self.node_array[self.answer.unwrap()]
             .par_iter_mut()
             .for_each(|mut node| {
-                println!("{:?}", data[line as usize]);
-                if node.category.as_ref().unwrap() == data[line as usize].answer.as_ref().unwrap() {
+                println!("{:?}", data[line]);
+                if node.category.as_ref().unwrap() == data[line].answer.as_ref().unwrap() {
                     node.correct_answer = Some(1.0);
                 } else {
                     node.correct_answer = Some(0.0);
@@ -275,26 +285,34 @@ impl NeuralNetwork {
     }
 
     /// Passes in data to the sensors, pushs data 'downstream' through the network
-    fn push_downstream(&mut self, data: &mut Vec<Input>, line: i32) {
+    fn push_downstream(&mut self, data: &mut Vec<Input>, line: usize) {
         // Passes in data for input layer
-        for i in 0..self.node_array[self.sensor.unwrap()].len() {
-            let input  = data[line as usize].inputs[i];
-            self.node_array[self.sensor.unwrap()][i].cached_output = Some(input);
-        }
+        (0..self.node_array[self.sensor.unwrap()].len())
+            .into_iter()
+            .for_each(|i| {
+                let input  = data[line].inputs[i];
+                self.node_array[self.sensor.unwrap()][i].cached_output = Some(input);
+            });
 
         // Feed-forward values for hidden and output layers
-        for layer in 1..self.node_array.len() {
-            for node in 0..self.node_array[layer].len() {
-                for prev_node in 0..self.node_array[layer-1].len() {
-                    // self.node_array[layer][node].link_vals.push(self.node_array[layer-1][prev_node].cached_output.unwrap());
-                    self.node_array[layer][node].link_vals[prev_node] = Some(self.node_array[layer-1][prev_node].cached_output.unwrap());
-                    // I think this line needs to be un-commented
-                    self.node_array[layer][node].output(&self.activation_function);
-                    if DEBUG { if layer == self.answer.unwrap() { println!("Ran output on answer {:?}", self.node_array[layer][node].cached_output) } }
-                }
-                self.node_array[layer][node].output(&self.activation_function);
-            }
-        }
+        (1..self.node_array.len())
+            .into_iter()
+            .for_each(|layer_i| {
+                (0..self.node_array[layer_i].len())
+                    .into_iter()
+                    .for_each(|node_i| {
+                        (0..self.node_array[layer_i - 1].len())
+                            .into_iter()
+                            .for_each(|prev_node_i| {
+                                // self.node_array[layer][node].link_vals.push(self.node_array[layer-1][prev_node].cached_output.unwrap());
+                                self.node_array[layer_i][node_i].link_vals[prev_node_i] = Some(self.node_array[layer_i-1][prev_node_i].cached_output.unwrap());
+                                // I think this line needs to be un-commented
+                                self.node_array[layer_i][node_i].output(&self.activation_function);
+                                if layer_i == self.answer.unwrap() { dbg_println!("Ran output on answer {:?}", self.node_array[layer_i][node_i].cached_output); }
+                            });
+                        self.node_array[layer_i][node_i].output(&self.activation_function);
+                    });
+            });
     }
 
     /// Analyses the chosen answer node's result.
@@ -326,9 +344,9 @@ impl NeuralNetwork {
             }
         }
 
-        if DEBUG { println!("Category: {:?} \nBrightness: {:?}", brightest_node.category.as_ref().unwrap(), brightness); }
+        dbg_println!("Category: {:?} \nBrightness: {:?}", brightest_node.category.as_ref().unwrap(), brightness);
         if brightest_node.category.as_ref().unwrap().eq(&data[line].answer.as_ref().unwrap()) {
-            if DEBUG { println!("Sum++"); }
+            dbg_println!("Sum++");
             *sum += 1.0;
         }
         *count += 1.0;
@@ -356,9 +374,9 @@ impl NeuralNetwork {
     /// Goes back through the network adjusting the weights of the all the neurons based on their error signal
     fn backpropogate(&mut self, learning_rate: f32, hidden_layers: i32) {
         for answer in 0..self.node_array[self.answer.unwrap()].len() {
-            if DEBUG { println!("Node: {:?}", self.node_array[self.answer.unwrap()][answer]); }
+            dbg_println!("Node: {:?}", self.node_array[self.answer.unwrap()][answer]);
             self.node_array[self.answer.unwrap()][answer].compute_answer_err_sig();
-            if DEBUG { println!("Error: {:?}", self.node_array[self.answer.unwrap()][answer].err_sig.unwrap()) }
+            dbg_println!("Error: {:?}", self.node_array[self.answer.unwrap()][answer].err_sig.unwrap());
         }
         self.adjust_hidden_weights(learning_rate, hidden_layers);
         // Adjusts weights for answer neurons
@@ -370,7 +388,6 @@ impl NeuralNetwork {
     #[allow(non_snake_case)]
     /// Adjusts the weights of all the hidden neurons in a network
     fn adjust_hidden_weights(&mut self, learning_rate: f32, hidden_layers: i32) {
-
         // HIDDEN represents the layer, while hidden represents the node of the layer
         for HIDDEN in 1..(hidden_layers + 1) as usize {            
             for hidden in 0..self.node_array[HIDDEN].len() {
@@ -380,27 +397,24 @@ impl NeuralNetwork {
                     self.node_array[HIDDEN + 1][next_layer].err_sig = match self.node_array[HIDDEN + 1][next_layer].err_sig.is_none() {
                         true => {
                             Some(0.0)
-                        }, 
+                        },
                         false => {
                             self.node_array[HIDDEN + 1][next_layer].err_sig
                         }
                     };
                     // This changes based on the activation function
                     self.node_array[HIDDEN][hidden].err_sig = Some(self.node_array[HIDDEN][hidden].err_sig.unwrap() + (self.node_array[HIDDEN + 1][next_layer].err_sig.unwrap() * next_weight));
-                    if DEBUG { 
-                        println!("next err sig {:?}", self.node_array[HIDDEN + 1][next_layer].err_sig.unwrap());
-                        println!("next weight {:?}", next_weight);
-                    }
+
+                    dbg_println!("next err sig {:?}", self.node_array[HIDDEN + 1][next_layer].err_sig.unwrap());
+                    dbg_println!("next weight {:?}", next_weight);
                 }
                 let hidden_result = self.node_array[HIDDEN][hidden].cached_output.unwrap();
                 let multiplied_value = self.node_array[HIDDEN][hidden].err_sig.unwrap() * (hidden_result) * (1.0 - hidden_result);
-                if DEBUG { println!("new hidden errsig multiply: {:?}", multiplied_value); }
+                dbg_println!("new hidden errsig multiply: {:?}", multiplied_value);
                 self.node_array[HIDDEN][hidden].err_sig = Some(multiplied_value);
 
-                if DEBUG { 
-                    println!("\nLayer: {:?}", HIDDEN);
-                    println!("Node: {:?}", hidden) 
-                }
+                dbg_println!("\nLayer: {:?}", HIDDEN);
+                dbg_println!("Node: {:?}", hidden);
 
                 self.node_array[HIDDEN][hidden].adjust_weights(learning_rate);
             }
