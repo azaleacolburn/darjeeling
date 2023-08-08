@@ -5,7 +5,7 @@
     <img src="https://img.shields.io/crates/v/darjeeling.svg"/>
 </a>
 
-Machine learning and data manipulation tools for Rust
+Machine learning tools for Rust
 
 ### Contact
 elocolburn@comcast.net
