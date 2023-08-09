@@ -12,8 +12,8 @@ elocolburn@comcast.net
 
 # Installation
 Add the following dependencies to your `Cargo.toml` file
-```
-darjeeling = "0.3.2"
+```toml
+darjeeling = "0.3.3"
 ```
 
 # Basic Setup
@@ -95,7 +95,7 @@ Different problems work differently with different learning rates, although I re
 
         let model_name: String = train_network_xor(data.clone(), categories.clone(), learning_rate).unwrap();
 
-        test_network_xor(data, categories, model_name)
+        NeuralNetwork::test(data, categories, model_name);
     }
     
     fn train_network_xor(mut data:Vec<Input>, categories: Vec<String>, learning_rate: f32) -> Option<String> {
@@ -113,11 +113,6 @@ Different problems work differently with different learning rates, although I re
             Ok((model_name, _err_percent, _mse)) => Some(model_name),
             Err(_err) => None
         }
-    }
-
-    fn test_network_xor(data: Vec<Input>, categories: Vec<String>, model_name: String) {
-
-        NeuralNetwork::test(data, categories, model_name);
     }
 
     // This isn't very important, this just reads the file you want to and format it as Inputs

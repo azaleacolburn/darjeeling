@@ -4,19 +4,13 @@ use crate::{
     types::Types,
     node::Node,
     input::Input,
-    activation::ActivationFunction
+    activation::ActivationFunction,
+    dbg_println
 };
 use std::{fs, path::Path};
 use serde::{Deserialize, Serialize};
 use rand::{Rng, seq::SliceRandom, thread_rng};
 use rayon::prelude::*;
-
-macro_rules! dbg_println {
-    // `()` indicates that the macro takes no argument.
-    ($($arg:tt)*) => {
-        if DEBUG { println!($($arg)*) }
-    };
-}
 
 /// The top-level neural network struct
 /// sensor and answer represents which layer sensor and answer are on
@@ -29,6 +23,7 @@ pub struct NeuralNetwork {
     activation_function: ActivationFunction
 }
 #[warn(clippy::unwrap_in_result)]
+
 impl NeuralNetwork {
     
     /// Constructor function for the neural network

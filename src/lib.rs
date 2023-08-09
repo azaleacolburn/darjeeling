@@ -26,5 +26,6 @@ pub mod error;
 pub mod activation;
 pub mod types;
 pub mod generation;
+mod utils;
 #[cfg(test)]
 pub mod tests;

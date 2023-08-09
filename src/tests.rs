@@ -148,7 +148,7 @@ fn train_gen() -> String {
 
 /// Read the file you want to and format it as Inputs
 pub fn gen_data_file<'a>() -> Vec<Input> {
-    let file = match fs::File::open("training_data/gen.txt") {
+    let file = match fs::File::open("training_data/train-digits.txt") {
         Ok(file) => file,
         Err(error) => panic!("Panic opening the file: {:?}", error)
     };
@@ -164,7 +164,7 @@ pub fn gen_data_file<'a>() -> Vec<Input> {
             Err(error) => panic!("{:?}", error)
         };
 
-        let init_inputs: Vec<&str> = line.split(" ").collect();
+        let init_inputs: Vec<&str> = line.split(",").collect();
         let mut float_inputs: Vec<f32> = vec![];
         for i in 0..init_inputs.len() {
             float_inputs.push(init_inputs[i].parse().unwrap());

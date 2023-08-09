@@ -9,7 +9,8 @@ use crate::{
     DEBUG, 
     error::DarjeelingError,
     input::Input, 
-    types::{Types, Types::Boolean}
+    types::{Types, Types::Boolean},
+    dbg_println
 };
 
 /// The top-level neural network struct
@@ -48,18 +49,18 @@ impl NeuralNetwork {
     /// let hidden_layers: i32 = 1;
     /// let mut net: NeuralNetwork = NeuralNetwork::new(inputs, hidden, answer, hidden_layers, ActivationFunction::Sigmoid);
     /// ```
-    pub fn new(pixel_input: i32, hidden_num: i32, pixel_output: i32, hidden_layers: i32, activation_function: ActivationFunction) -> NeuralNetwork {
+    pub fn new(input_num: i32, hidden_num: i32, answer_num: i32, hidden_layers: i32, activation_function: ActivationFunction) -> NeuralNetwork {
         let mut net: NeuralNetwork = NeuralNetwork { node_array: vec![], sensor: Some(0), answer: Some(hidden_layers as usize + 1), parameters: None, activation_function};
         let mut rng = rand::thread_rng();
         net.node_array.push(vec![]);    
-        for _i in 0..pixel_input {
+        for _i in 0..input_num {
             net.node_array[net.sensor.unwrap()].push(Node::new(&vec![], None));
         }
 
         for i in 1..hidden_layers + 1 {
             let mut hidden_vec:Vec<Node> = vec![];
             let hidden_links = net.node_array[(i - 1) as usize].len();
-            if DEBUG { println!("Hidden Links: {:?}", hidden_links) }
+            dbg_println!("Hidden Links: {:?}", hidden_links);
             for _j in 0..hidden_num{
                 hidden_vec.push(Node { link_weights: vec![], link_vals: vec![], links: hidden_links, err_sig: None, correct_answer: None, cached_output: None, category: None, b_weight: None });
             }
@@ -69,26 +70,36 @@ impl NeuralNetwork {
         net.node_array.push(vec![]);
         let answer_links = net.node_array[hidden_layers as usize].len();
         println!("Answer Links: {:?}", answer_links);
-        for _i in 0..pixel_output {
+        for _i in 0..answer_num {
             net.node_array[net.answer.unwrap()].push(Node { link_weights: vec![], link_vals: vec![], links: answer_links, err_sig: None, correct_answer: None, cached_output: Some(0.0), category: None, b_weight: None });
         }
         
-        for layer in &mut net.node_array{
-            for node in layer{
-                node.b_weight = Some(rng.gen_range(-0.5..0.5));
-                if DEBUG { println!("Made it to pushing link weights") }
-                for _i in 0..node.links {
-                    node.link_weights.push(rng.gen_range(-0.5..0.5));
-                    node.link_vals.push(None);
-                }
-            }
-        }
+        net.node_array
+            .iter_mut()
+            .for_each(|layer| {
+                layer
+                    .iter_mut()
+                    .for_each(|mut node| {
+                        node.b_weight = Some(rng.gen_range(-0.5..0.5));
+                        dbg_println!("Made it to pushing link weights");
+                        (0..node.links)
+                            .into_iter()
+                            .for_each(|_| {
+                                node.link_weights.push(rng.gen_range(-0.5..0.5));
+                                node.link_vals.push(None);
+                            })
+                    })
+            });
         let mut params = 0;
-        for i in 0..net.node_array.len() {
-            for j in 0..net.node_array[i].len() {
-                params += 1 + net.node_array[i][j].links as u128;
-            }
-        }
+        (0..net.node_array.len())
+            .into_iter()
+            .for_each(|i| {
+                (0..net.node_array[i].len())
+                    .into_iter()
+                    .for_each(|j| {
+                        params += 1 + net.node_array[i][j].links as u128;
+                    })
+            });
         net.parameters = Some(params);
         net
     }
