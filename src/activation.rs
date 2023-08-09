@@ -6,7 +6,7 @@ pub enum ActivationFunction {
     Sigmoid,
     Tanh,
     Linear,
-    Step,
+    // Step,
 }
 
 impl fmt::Display for ActivationFunction {
@@ -18,7 +18,7 @@ impl fmt::Display for ActivationFunction {
 
             ActivationFunction::Tanh => write!(f, "tanh"),
 
-            ActivationFunction::Step => write!(f, "step"),
+            // ActivationFunction::Step => write!(f, "step"),
 
         }
     }

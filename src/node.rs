@@ -50,23 +50,48 @@ impl Node {
 
             ActivationFunction::Tanh => Node::tanh(self.input()),
 
-            ActivationFunction::Step => Node::step(self.input()),
+            // ActivationFunction::Step => Node::step(self.input()),
         });
         
         self.cached_output.unwrap()
     }
     
-    pub fn compute_answer_err_sig(&mut self) {
+    pub fn compute_answer_err_sig(&mut self, activation: &ActivationFunction) {
         if DEBUG { println!("Err Signal Pre: {:?}", self.err_sig); }
-        // This is where the derivative of the activation function goes I think
-        self.err_sig = Some((self.correct_answer.unwrap() - self.cached_output.unwrap()) * self.cached_output.unwrap() * (1.00 - self.cached_output.unwrap()));
+        let y = self.cached_output.unwrap();
+        let derivative: f32;
+        match activation {
+            ActivationFunction::Sigmoid => {
+                derivative = y * (1.0 - y);
+            },
+            ActivationFunction::Linear => {
+                derivative = 1.0;
+            }, 
+            ActivationFunction::Tanh => {
+                derivative = 1.0 - unsafe { std::intrinsics::powf32(y, 2.0) };
+            }
+        }
+        self.err_sig = Some((self.correct_answer.unwrap() - y) * derivative);
         if DEBUG { println!("Err Signal Post: {:?}", self.err_sig.unwrap()) }
     }
 
-    pub fn compute_answer_err_sig_gen(&mut self, mse: f32) {
+    pub fn compute_answer_err_sig_gen(&mut self, mse: f32, activation: &ActivationFunction) {
         if DEBUG { println!("Err Signal Pre: {:?}", self.err_sig); }
         // This is where the derivative of the activation function goes I think
-        self.err_sig = Some(mse * self.cached_output.unwrap() * (1.00 - self.cached_output.unwrap()));
+        let y = self.cached_output.unwrap();
+        let derivative: f32;
+        match activation {
+            ActivationFunction::Sigmoid => {
+                derivative = y * (1.0 - y);
+            },
+            ActivationFunction::Linear => {
+                derivative = 1.0;
+            }, 
+            ActivationFunction::Tanh => {
+                derivative = 1.0 - unsafe { std::intrinsics::powf32(y, 2.0) };
+            }
+        }
+        self.err_sig = Some((mse * self.correct_answer.unwrap()) * derivative);
         if DEBUG { println!("Err Signal Post: {:?}", self.err_sig.unwrap()) }
     }
 

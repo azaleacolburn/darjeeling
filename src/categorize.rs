@@ -381,7 +381,7 @@ impl NeuralNetwork {
     fn backpropogate(&mut self, learning_rate: f32, hidden_layers: i32) {
         for answer in 0..self.node_array[self.answer.unwrap()].len() {
             dbg_println!("Node: {:?}", self.node_array[self.answer.unwrap()][answer]);
-            self.node_array[self.answer.unwrap()][answer].compute_answer_err_sig();
+            self.node_array[self.answer.unwrap()][answer].compute_answer_err_sig(&self.activation_function);
             dbg_println!("Error: {:?}", self.node_array[self.answer.unwrap()][answer].err_sig.unwrap());
         }
         self.adjust_hidden_weights(learning_rate, hidden_layers);
@@ -514,9 +514,9 @@ impl NeuralNetwork {
 
                 "linear" => activation = Some(ActivationFunction::Linear),
 
-                "tanh" => activation = Some(ActivationFunction::Tanh),
+                // "tanh" => activation = Some(ActivationFunction::Tanh),
 
-                "step" => activation = Some(ActivationFunction::Step),
+                // "step" => activation = Some(ActivationFunction::Step),
 
                 _ => {
                 
