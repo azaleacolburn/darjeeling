@@ -3,7 +3,7 @@ use rand::{Rng, seq::SliceRandom, thread_rng};
 use serde::{Serialize, Deserialize};
 use std::{fs, path::Path};
 use crate::{
-    categorize, 
+    categorize::CatNetwork,
     node::Node, 
     activation::ActivationFunction, 
     DEBUG, 
@@ -13,10 +13,9 @@ use crate::{
     dbg_println
 };
 
-/// The top-level neural network struct
-/// Sensor and answer represents which layer sensor and answer are on
+/// The generation Neural Network struct
 #[derive(Debug, Serialize, Deserialize)]
-pub struct NeuralNetwork {
+pub struct GenNetwork {
     node_array: Vec<Vec<Node>>,
     sensor: Option<usize>,
     answer: Option<usize>,
@@ -24,7 +23,7 @@ pub struct NeuralNetwork {
     activation_function: ActivationFunction
 }
 #[warn(clippy::unwrap_in_result)]
-impl NeuralNetwork {
+impl GenNetwork {
     
     /// Constructor function for the neural network
     /// Fills a Neural Network's node_array with empty nodes. 
@@ -40,17 +39,17 @@ impl NeuralNetwork {
     /// ``` rust
     /// use darjeeling::{
     ///     activation::ActivationFunction,
-    ///     categorize::NeuralNetwork
+    ///     CatNetwork
     /// };
     /// 
     /// let inputs: i32 = 10;
     /// let hidden: i32 = 40;
     /// let answer: i32 = 2;
     /// let hidden_layers: i32 = 1;
-    /// let mut net: NeuralNetwork = NeuralNetwork::new(inputs, hidden, answer, hidden_layers, ActivationFunction::Sigmoid);
+    /// let mut net: GenNetwork = GenNetwork::new(inputs, hidden, answer, hidden_layers, ActivationFunction::Sigmoid);
     /// ```
-    pub fn new(input_num: i32, hidden_num: i32, answer_num: i32, hidden_layers: i32, activation_function: ActivationFunction) -> NeuralNetwork {
-        let mut net: NeuralNetwork = NeuralNetwork { node_array: vec![], sensor: Some(0), answer: Some(hidden_layers as usize + 1), parameters: None, activation_function};
+    pub fn new(input_num: i32, hidden_num: i32, answer_num: i32, hidden_layers: i32, activation_function: ActivationFunction) -> GenNetwork {
+        let mut net: GenNetwork = GenNetwork { node_array: vec![], sensor: Some(0), answer: Some(hidden_layers as usize + 1), parameters: None, activation_function};
         let mut rng = rand::thread_rng();
         net.node_array.push(vec![]);    
         for _i in 0..input_num {
@@ -116,26 +115,27 @@ impl NeuralNetwork {
     /// - Distinguishing Hidden Neurons: The number of hidden neurons in each layer of the distinguishing model.
     /// - Distinguising Hidden Layers: The number of hidden layers in the distinguishing model.
     /// - Distinguishing Activation: The activation function of the distinguishing model.
+    /// - Distinguishing Target Error Percent: The error percentange at which the distinguishing models will stop training.
     /// 
     /// ## Returns
     /// The falable name of the model that this neural network trained
     /// 
     /// ## Err
-    /// - ### WriteModelFailed
+    /// ### WriteModelFailed
     /// There was a problem when saving the model to a file
     /// 
-    /// - ### ModelNameAlreadyExists
+    /// ### ModelNameAlreadyExists
     /// The random model name chosen already exists
     /// Change the name or retrain
     /// 
-    /// - ### RemoveModelFailed
+    /// ### RemoveModelFailed
     /// Everytime a new distinguishing model is written to the project folder, the previous one has to be removed.
     /// This removal failed,
     /// 
-    /// - ### DistinguishingModel 
+    /// ### DistinguishingModel 
     /// The distinguishing model training failed.
     /// 
-    /// - ### UnknownError
+    /// ### UnknownError
     /// Not sure what happened, but something failed
     /// 
     /// Make an issue on the [darjeeling](https://github.com/Ewie21/darjeeling) github page
@@ -146,7 +146,7 @@ impl NeuralNetwork {
     /// ## Examples
     /// ```ignore
     /// use darjeeling::{
-    ///     generation::NeuralNetwork,
+    ///     generation::GenNetwork,
     ///     activation::ActivationFunction,
     ///     input::Input, 
     ///     // This file may not be avaliable
@@ -164,7 +164,7 @@ impl NeuralNetwork {
     /// // You also need to write the file input function
     /// // Automatic file reading and formatting function coming soon
     /// let mut data: Vec<Input> = file();
-    /// let mut net = NeuralNetwork::new(2, 2, 2, 1, ActivationFunction::Sigmoid);
+    /// let mut net = GenNetwork::new(2, 2, 2, 1, ActivationFunction::Sigmoid);
     /// let model_name: String = net.learn(&mut data, 0.5, "gen", 100, 0.5, 10, 1, ActivationFunction::Sigmoid, 99.0).unwrap();
     /// let new_data: Vec<Input> = net.test(data).unwrap();
     /// ```
@@ -197,7 +197,7 @@ impl NeuralNetwork {
                 outputs.push(data[line].clone());
             }
             if model_name.is_some() {
-                let mut new_model = categorize::NeuralNetwork::read_model(model_name.clone().unwrap()).unwrap();
+                let mut new_model = CatNetwork::read_model(model_name.clone().unwrap()).unwrap();
                 match std::fs::remove_file(model_name.unwrap()) {
                     Ok(_) => {
                         model_name = match new_model.learn(
@@ -212,7 +212,7 @@ impl NeuralNetwork {
                     Err(err) => return Err(DarjeelingError::RemoveModelFailed(err.to_string()))
                 };
             } else {
-                let mut new_model = categorize::NeuralNetwork::new(self.node_array[self.answer.unwrap()].len() as i32, distinguising_hidden_neurons, 2, distinguising_hidden_layers, distinguising_activation);
+                let mut new_model = CatNetwork::new(self.node_array[self.answer.unwrap()].len() as i32, distinguising_hidden_neurons, 2, distinguising_hidden_layers, distinguising_activation);
 
                 model_name = match new_model.learn(
                     data, 
@@ -482,7 +482,7 @@ impl NeuralNetwork {
     /// 
     /// ## Err
     /// If the file cannnot be read, or if the file does not contain a valid serialized Neural Network
-    pub fn read_model(model_name: String) -> Result<NeuralNetwork, DarjeelingError> {
+    pub fn read_model(model_name: String) -> Result<GenNetwork, DarjeelingError> {
 
         println!("Loading model");
         
@@ -546,7 +546,7 @@ impl NeuralNetwork {
         let sensor: Option<usize> = Some(0);
         let answer: Option<usize> = Some(node_array.len() - 1);
         
-        let net = NeuralNetwork {
+        let net = GenNetwork {
             node_array,
             sensor,
             answer,

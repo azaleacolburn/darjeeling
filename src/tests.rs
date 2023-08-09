@@ -3,12 +3,12 @@ use std::{io::{BufReader, BufRead}, fs};
 use crate::{
     input::Input, 
     DEBUG, 
-    categorize, 
+    categorize::CatNetwork, 
     // dataframe::DataFrame,
     // series::Series, 
     types::Types,
     activation::ActivationFunction, 
-    generation
+    generation::GenNetwork
 };
 
 #[test]
@@ -22,7 +22,7 @@ pub fn train_test_xor() {
     data.iter_mut().for_each(|mut input| {
         input.answer = None;
     });
-    categorize::NeuralNetwork::test(data, categories, model_name).unwrap();
+    CatNetwork::test(data, categories, model_name).unwrap();
 }   
 
 /// Returns None if the learn function returns an Err variant
@@ -31,7 +31,7 @@ fn train_network_xor(mut data: Vec<Input>, categories: Vec<Types>, learning_rate
     let hidden_num: i32 = 2;
     let answer_num: i32 = 2;
     let hidden_layers: i32 = 1;
-    let mut net = categorize::NeuralNetwork::new(input_num, hidden_num, answer_num, hidden_layers, ActivationFunction::Sigmoid);
+    let mut net = CatNetwork::new(input_num, hidden_num, answer_num, hidden_layers, ActivationFunction::Sigmoid);
 
     match net.learn(&mut data, categories, learning_rate, "xor", 99.0) {
         Ok((model_name, _err_percent, _mse)) => Some(model_name),
@@ -81,13 +81,13 @@ fn train_test_digits() {
 
     let model_name: String = train_network_digits(data.clone(), categories.clone(), learning_rate).unwrap();
 
-    categorize::NeuralNetwork::test(data, categories, model_name).unwrap();
+    CatNetwork::test(data, categories, model_name).unwrap();
 }
 
 /// # Panics
 /// If the learn function returns an Err
 fn train_network_digits(mut data: Vec<Input>, categories: Vec<Types>, learning_rate: f32) -> Option<String> {
-    let mut net = categorize::NeuralNetwork::new(64, 128, 10, 1, ActivationFunction::Sigmoid);
+    let mut net = CatNetwork::new(64, 128, 10, 1, ActivationFunction::Sigmoid);
 
     match net.learn(&mut data, categories, learning_rate, "digits", 99.0) {
 
@@ -133,7 +133,7 @@ fn train_test_gen() {
     let model_name = train_gen();
     let data = gen_data_file();
     let data1 = data[data.len() - 1].clone();
-    let mut model: generation::NeuralNetwork = generation::NeuralNetwork::read_model(model_name).unwrap();
+    let mut model: GenNetwork = GenNetwork::read_model(model_name).unwrap();
     let output: Vec<Input> = model.test(&mut vec![data1]).unwrap();
     for i in 0..output.len() {
         println!("{}", output[i]);
@@ -142,7 +142,7 @@ fn train_test_gen() {
 
 fn train_gen() -> String {
     let mut inputs = gen_data_file();
-    let mut net = generation::NeuralNetwork::new(8, 8, 8, 1, ActivationFunction::Sigmoid);
+    let mut net = GenNetwork::new(8, 8, 8, 1, ActivationFunction::Sigmoid);
     net.learn(&mut inputs, 1.0, "dummy_gen", 100, 0.5, 8, 1, ActivationFunction::Sigmoid, 99.0).unwrap()
 }
 

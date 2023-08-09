@@ -1,9 +1,9 @@
 <!--<h1><img width="436" alt="Screenshot 2023-08-07 at 12 59 13 PM" src="https://github.com/Ewie21/darjeeling/assets/62953415/cd3347af-4da6-4860-a7b4-3799e9c4892d"/>
 </h1><-->
 # DARJEELING
-<a align="center" href="https://crates.io/crates/darjeeling">
-    <img src="https://img.shields.io/crates/v/darjeeling.svg"/>
-</a>
+[![Latest version](https://img.shields.io/crates/v/darjeeling.svg)](https://crates.io/crates/darjeeling)
+[![Documentation](https://docs.rs/darjeeling/badge.svg)](https://docs.rs/darjeeling)
+![License](https://img.shields.io/crates/l/darjeeling.svg)
 
 Machine learning tools for Rust
 

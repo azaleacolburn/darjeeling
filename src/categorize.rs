@@ -12,10 +12,9 @@ use serde::{Deserialize, Serialize};
 use rand::{Rng, seq::SliceRandom, thread_rng};
 use rayon::prelude::*;
 
-/// The top-level neural network struct
-/// sensor and answer represents which layer sensor and answer are on
+/// The categorization Neural Network struct
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct NeuralNetwork {
+pub struct CatNetwork {
     node_array: Vec<Vec<Node>>,
     sensor: Option<usize>,
     answer: Option<usize>,
@@ -24,7 +23,7 @@ pub struct NeuralNetwork {
 }
 #[warn(clippy::unwrap_in_result)]
 
-impl NeuralNetwork {
+impl CatNetwork {
     
     /// Constructor function for the neural network
     /// Fills a Neural Network's node_array with empty nodes. 
@@ -32,25 +31,26 @@ impl NeuralNetwork {
     /// 
     /// ## Params
     /// - Inputs: The number of sensors in the input layer
-    /// - Hidden: The number of hidden nodes in each layer
+    /// - Hidden: The number of hidden nodes per hidden layer
     /// - Answer: The number of answer nodes, or possible categories
     /// - Hidden Layers: The number of different hidden layers
+    /// - Activation Function: Which activation function is used by the network. This can be changed layer with the [`set_activation_func`](fn@set_activation_func) method.
     /// 
     /// ## Examples
     /// ``` rust
     /// use darjeeling::{
-    /// activation::ActivationFunction,
-    /// categorize::NeuralNetwork
+    ///     activation::ActivationFunction,
+    ///     categorize::CatNetwork
     /// };
     /// 
     /// let inputs: i32 = 10;
     /// let hidden: i32 = 40;
     /// let answer: i32 = 2;
     /// let hidden_layers: i32 = 1;
-    /// let mut net: NeuralNetwork = NeuralNetwork::new(inputs, hidden, answer, hidden_layers, ActivationFunction::Sigmoid);
+    /// let mut net: CatNetwork = CatNetwork::new(inputs, hidden, answer, hidden_layers, ActivationFunction::Sigmoid);
     /// ```
-    pub fn new(input_num: i32, hidden_num: i32, answer_num: i32, hidden_layers: i32, activation_function: ActivationFunction) -> NeuralNetwork {
-        let mut net: NeuralNetwork = NeuralNetwork { node_array: vec![], sensor: Some(0), answer: Some(hidden_layers as usize + 1), parameters: None, activation_function};
+    pub fn new(input_num: i32, hidden_num: i32, answer_num: i32, hidden_layers: i32, activation_function: ActivationFunction) -> CatNetwork {
+        let mut net: CatNetwork = CatNetwork { node_array: vec![], sensor: Some(0), answer: Some(hidden_layers as usize + 1), parameters: None, activation_function};
         let mut rng = rand::thread_rng();
         net.node_array.push(vec![]);    
         for _i in 0..input_num {
@@ -104,7 +104,7 @@ impl NeuralNetwork {
         net
     }
 
-    /// Trains the neural network model to be able to categorize data in a dataset
+    /// Trains the neural network model to be able to categorize items in a dataset into given categories
     /// 
     /// ## Params
     /// - Data: List of inputs
@@ -112,9 +112,14 @@ impl NeuralNetwork {
     /// The number of answer nodes should be the same of the number of categories
     /// - Learning Rate: The modifier that is applied to link weights as they're adjusted.
     /// Try fiddling with this one, but -1.5 - 1.5 is recommended to start.
+    /// - Name: The name of the network
+    /// - Target Error Percent: The error percent at which the network will be stop training, checked at the begining of each new epoch.
     /// 
     /// ## Returns
-    /// The falable name of the model that this neural network trained
+    /// The fallible: 
+    /// - name of the model that this neural network trained(the name parameter with a random u32 appended)
+    /// - the error percentage of the last epoch
+    /// - the mse of the training
     /// 
     /// ## Err
     /// - ### WriteModelFailed
@@ -133,7 +138,7 @@ impl NeuralNetwork {
     /// ## Examples
     /// ```ignore
     /// use darjeeling::{
-    /// categorize::NeuralNetwork,
+    /// categorize::CatNetwork,
     /// activation::ActivationFunction,
     /// input::Input, 
     /// // This file may not be avaliable
@@ -150,7 +155,7 @@ impl NeuralNetwork {
     /// // Automatic file reading and formatting function coming soon
     /// let categories: Vec<String> = categories_str_format(vec!["0", "1"]);
     /// let mut data: Vec<Input> = xor_file();
-    /// let mut net = NeuralNetwork::new(2, 2, 2, 1, ActivationFunction::Sigmoid);
+    /// let mut net = CatNetwork::new(2, 2, 2, 1, ActivationFunction::Sigmoid);
     /// let learning_rate = 1.0;
     /// let (model_name, error_percentage, mse) = net.learn(&mut data, categories, learning_rate, "xor", 99.0).unwrap();
     /// ```
@@ -162,12 +167,12 @@ impl NeuralNetwork {
         name: &str,
         target_err_percent: f32
     ) -> Result<(String, f32, f32), DarjeelingError> {
-        let mut epochs: f32 = 0.0;
-        let mut sum: f32 = 0.0;
-        let mut count: f32 = 0.0;
-        let mut err_percent: f32 = 0.0;
+        let mut epochs = 0.0;
+        let mut sum = 0.0;
+        let mut count = 0.0;
+        let mut err_percent = 0.0;
         let hidden_layers = self.node_array.len() - 2;
-        let mut mse: f32 = 0.0;
+        let mut mse = 0.0;
 
         self.categorize(categories);
         
@@ -221,7 +226,7 @@ impl NeuralNetwork {
         let mut answers: Vec<Types> = vec![];
         let mut mse = 0.0;
 
-        let mut net: NeuralNetwork = match NeuralNetwork::read_model(model_name.clone()) {
+        let mut net: CatNetwork = match CatNetwork::read_model(model_name.clone()) {
 
             Ok(net) => net,
             Err(error) => return Err(DarjeelingError::ReadModelFunctionFailed(model_name, Box::new(error)))
@@ -352,7 +357,7 @@ impl NeuralNetwork {
             *count += 1.0;
         }
 
-        (brightest_node.category.clone().unwrap(), NeuralNetwork::calculate_err_for_generation_model(mse, *sum, *count))
+        (brightest_node.category.clone().unwrap(), CatNetwork::calculate_err_for_generation_model(mse, *sum, *count))
     }
 
     fn calculate_err_for_generation_model(mse: &mut f32, sum: f32, count: f32) -> f32 {
@@ -492,7 +497,7 @@ impl NeuralNetwork {
     /// 
     /// ## Err
     /// If the file cannnot be read, or if the file does not contain a valid serialized Neural Network
-    pub fn read_model(model_name: String) -> Result<NeuralNetwork, DarjeelingError> {
+    pub fn read_model(model_name: String) -> Result<CatNetwork, DarjeelingError> {
         println!("Loading model");
         // Err if the file reading fails
         let serialized_net: String = match fs::read_to_string(&model_name) {
@@ -564,7 +569,7 @@ impl NeuralNetwork {
         let sensor: Option<usize> = Some(0);
         let answer: Option<usize> = Some(node_array.len() - 1);
         
-        let net = NeuralNetwork {
+        let net = CatNetwork {
             node_array,
             sensor,
             answer,
