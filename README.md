@@ -5,13 +5,13 @@
     <img src="https://img.shields.io/crates/v/darjeeling.svg"/>
 </a>
 
-Machine learning and data manipulation tools for Rust
+Machine learning tools for Rust
 
 ### Contact
 elocolburn@comcast.net
 
 # Installation
-Add the following to your `Cargo.toml` file
+Add the following dependencies to your `Cargo.toml` file
 ```
 darjeeling = "0.3.2"
 ```
@@ -41,6 +41,7 @@ darjeeling = "0.3.2"
     let input = Input::new(float_inputs, answer_input);
 ```
 Inputs represent a set of floating point numbers and which answer node they should be mapped to. For example, if the input is a picture of a Bee, the float_inputs might be the hex value of every pixel, while the answer input might be "Bee". Make sure the answer is always a valid category.
+
 3. Train your network
 ```rust
     let learning_rate: f32 = 3.0;
@@ -54,6 +55,7 @@ Inputs represent a set of floating point numbers and which answer node they shou
     }
 ```
 If the training is successful, the model_name is returned along with the percent of the training inputs the network correctly categorized on it's last epoch, and the mean squared error of the training.
+
 4. Test your network
 ```rust
     // Do whatever you want with this data
