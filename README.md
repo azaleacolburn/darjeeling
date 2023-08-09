@@ -13,7 +13,7 @@ elocolburn@comcast.net
 # Installation
 Add the following dependencies to your `Cargo.toml` file
 ```toml
-darjeeling = "0.3.3"
+darjeeling = "0.3.2"
 ```
 
 # Basic Setup
