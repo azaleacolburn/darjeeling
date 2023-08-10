@@ -1,3 +1,5 @@
+// Deprecated
+
 use std::fmt::Debug;
 use crate::types::Types;
 
