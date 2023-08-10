@@ -21,7 +21,7 @@ pub mod input;
 pub mod categorize;
 pub mod node;
 // pub mod dataframe;
-pub mod series;
+// pub mod series;
 pub mod error;
 pub mod activation;
 pub mod types;
