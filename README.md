@@ -187,4 +187,4 @@ If you want to contribute, check to todo, fork the code, and make a pull request
 - Add Support for [Polars](https://www.pola.rs/) Dataframes
 - Optimize
 
-Dataframes are now deprecated
+Dataframes and series' are now deprecated
