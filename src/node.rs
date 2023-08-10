@@ -91,7 +91,7 @@ impl Node {
                 derivative = 1.0 - unsafe { std::intrinsics::powf32(y, 2.0) };
             }
         }
-        self.err_sig = Some((mse * self.correct_answer.unwrap()) * derivative);
+        self.err_sig = Some(mse * derivative);
         if DEBUG { println!("Err Signal Post: {:?}", self.err_sig.unwrap()) }
     }
 
