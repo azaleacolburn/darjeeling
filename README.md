@@ -1,6 +1,6 @@
 <!--<h1><img width="436" alt="Screenshot 2023-08-07 at 12 59 13 PM" src="https://github.com/Ewie21/darjeeling/assets/62953415/cd3347af-4da6-4860-a7b4-3799e9c4892d"/>
 </h1><-->
-# DARJEELING
+# darjeeling
 [![Latest version](https://img.shields.io/crates/v/darjeeling.svg)](https://crates.io/crates/darjeeling)
 [![Documentation](https://docs.rs/darjeeling/badge.svg)](https://docs.rs/darjeeling)
 ![License](https://img.shields.io/crates/l/darjeeling.svg)
@@ -187,4 +187,4 @@ If you want to contribute, check to todo, fork the code, and make a pull request
 - Add Support for [Polars](https://www.pola.rs/) Dataframes
 - Optimize
 
-Dataframes are now deprecated
+Dataframes and series' are now deprecated
