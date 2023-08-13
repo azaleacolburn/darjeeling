@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use crate::{DEBUG, types::Types, activation::ActivationFunction};
+use crate::{DEBUG, types::Types, activation::ActivationFunction, dbg_println};
 
 /// Represents a node in the network
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -85,7 +85,7 @@ impl Node {
                 derivative = y * (1.0 - y);
             },
             ActivationFunction::Linear => {
-                derivative = 1.0;
+                derivative = 2.0;
             }, 
             ActivationFunction::Tanh => {
                 derivative = 1.0 - unsafe { std::intrinsics::powf32(y, 2.0) };
@@ -95,16 +95,12 @@ impl Node {
         if DEBUG { println!("Err Signal Post: {:?}", self.err_sig.unwrap()) }
     }
 
-    pub fn adjust_weights(&mut self, learning_rate: f32){
+    pub fn adjust_weights(&mut self, learning_rate: f32) {
         self.b_weight = Some(self.b_weight.unwrap() + self.err_sig.unwrap() * learning_rate);
         for link in 0..self.links {
-            if DEBUG {
-                println!("\nInitial weights: {:?}", self.link_weights[link]);
-                println!("Link Value: {:?}", self.link_vals[link]);
-                println!("Err: {:?}", self.err_sig);
-            }
+            dbg_println!("\nInitial weights: {:?}\nLink Value: {:?}\nErr: {:?}", self.link_weights[link], self.link_vals[link].unwrap(), self.err_sig);
             self.link_weights[link] += self.err_sig.unwrap() * self.link_vals[link].unwrap() * learning_rate;
-            if DEBUG { println!("Adjusted Weight: {:?}\n", self.link_weights[link]); }
+            dbg_println!("Adjusted Weight: {:?}\n", self.link_weights[link]);
         }
     }
 
@@ -115,7 +111,7 @@ impl Node {
 
     fn linear(x: f32) -> f32 {
         
-        2.00 * x
+        2.0 * x
     }
 
     fn tanh(x: f32) -> f32 {

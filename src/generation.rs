@@ -319,45 +319,36 @@ impl GenNetwork {
     fn adjust_hidden_weights(&mut self, learning_rate: f32, hidden_layers: i32) {
         // HIDDEN represents the layer, while hidden represents the node of the layer
         (1..(hidden_layers + 1) as usize)
+        .into_iter()
+        .for_each(|HIDDEN| {
+            (0..self.node_array[HIDDEN].len())
             .into_iter()
-            .for_each(|HIDDEN| {
-                (0..self.node_array[HIDDEN].len())
-                    .into_iter()
-                    .for_each(|hidden| {
-                        self.node_array[HIDDEN][hidden].err_sig = Some(0.0);
-                        (0..self.node_array[HIDDEN + 1 ].len())
-                            .into_iter()
-                            .for_each(|next_layer| {
-                                let next_weight = self.node_array[HIDDEN + 1][next_layer].link_weights[hidden];
-                                self.node_array[HIDDEN + 1][next_layer].err_sig = match self.node_array[HIDDEN + 1][next_layer].err_sig.is_none() {
-                                    true => {
-                                        Some(0.0)
-                                    }, 
-                                    false => {
-                                        self.node_array[HIDDEN + 1][next_layer].err_sig
-                                    }
-                                };
-                                // This changes based on the activation function
-                                self.node_array[HIDDEN][hidden].err_sig = Some(self.node_array[HIDDEN][hidden].err_sig.unwrap() + (self.node_array[HIDDEN + 1][next_layer].err_sig.unwrap() * next_weight));
-                                if DEBUG { 
-                                    println!("next err sig {:?}", self.node_array[HIDDEN + 1][next_layer].err_sig.unwrap());
-                                    println!("next weight {:?}", next_weight);
-                                }
-                                let hidden_result = self.node_array[HIDDEN][hidden].cached_output.unwrap();
-                                let multiplied_value = self.node_array[HIDDEN][hidden].err_sig.unwrap() * (hidden_result) * (1.0 - hidden_result);
-                                if DEBUG { println!("new hidden errsig multiply: {:?}", multiplied_value); }
-                                self.node_array[HIDDEN][hidden].err_sig = Some(multiplied_value);
-                
-                                if DEBUG { 
-                                    println!("\nLayer: {:?}", HIDDEN);
-                                    println!("Node: {:?}", hidden) 
-                                }
-                
-                                self.node_array[HIDDEN][hidden].adjust_weights(learning_rate);
-                            })
-                            
-                    });   
-            });
+            .for_each(|hidden| {
+                self.node_array[HIDDEN][hidden].err_sig = Some(0.0);
+                (0..self.node_array[HIDDEN + 1 ].len())
+                .into_iter()
+                .for_each(|next_layer| {
+                    let next_weight = self.node_array[HIDDEN + 1][next_layer].link_weights[hidden];
+                    self.node_array[HIDDEN + 1][next_layer].err_sig = match self.node_array[HIDDEN + 1][next_layer].err_sig.is_none() {
+                        true => {
+                            Some(0.0)
+                        }, 
+                        false => {
+                            self.node_array[HIDDEN + 1][next_layer].err_sig
+                        }
+                    };
+                    // This changes based on the activation function
+                    self.node_array[HIDDEN][hidden].err_sig = Some(self.node_array[HIDDEN][hidden].err_sig.unwrap() + (self.node_array[HIDDEN + 1][next_layer].err_sig.unwrap() * next_weight));
+                    
+                    let hidden_result = self.node_array[HIDDEN][hidden].cached_output.unwrap();
+                    let multiplied_value = self.node_array[HIDDEN][hidden].err_sig.unwrap() * (hidden_result) * (1.0 - hidden_result);
+                    self.node_array[HIDDEN][hidden].err_sig = Some(multiplied_value);
+                    dbg_println!("next err sig {:?}\nnext weight {:?}\nnew hidden errsig multiply: {:?}\n\nLayer: {:?}\nNode: {:?}\n", self.node_array[HIDDEN + 1][next_layer].err_sig.unwrap(), next_weight, multiplied_value, HIDDEN, hidden);
+                    self.node_array[HIDDEN][hidden].adjust_weights(learning_rate);
+                });
+                    
+            });   
+        });
     }
 
     /// Not needed for now
@@ -371,7 +362,7 @@ impl GenNetwork {
         let brightest_node: &Node = &self.node_array[self.answer.unwrap()][self.largest_node()];
         let brightness: f32 = brightest_node.cached_output.unwrap();
 
-        if !(epochs.is_none()) { // This lets us use the same function for testing and training     
+        if !(epochs.is_none()) { // This lets us use the same function for testing and training 
             if epochs.unwrap() % 10.0 == 0.0 && epochs.unwrap() != 0.0 {
                 println!("\n-------------------------\n");
                 println!("Epoch: {:?}", epochs);
@@ -383,31 +374,36 @@ impl GenNetwork {
             }
         }
 
-        if DEBUG { println!("Category: {:?} \nBrightness: {:?}", brightest_node.category.as_ref().unwrap(), brightness); }
+        dbg_println!("Category: {:?} \nBrightness: {:?}", brightest_node.category.as_ref().unwrap(), brightness);
         if brightest_node.category.as_ref().unwrap().eq(&data[line].answer.as_ref().unwrap()) { 
-            if DEBUG { println!("Correct Answer Chosen"); }
-            if DEBUG { println!("Sum++"); }
+            dbg_println!("Correct Answer Chosen\nSum++");
             *sum += 1.0;
         }
         *count += 1.0;
         let mut ret: Vec<Types> = vec![];
         match expected_type {
             Types::Integer(_) => {
-                for node in &self.node_array[self.answer.unwrap()] {
+                let _ = &self.node_array[self.answer.unwrap()]
+                .iter()
+                .for_each(|node| {
                     let int = node.cached_output.unwrap() as i32;
                     ret.push(Types::Integer(int));
-                }
+                });
             }
             Types::Boolean(_) => {
-                for node in &self.node_array[self.answer.unwrap()] {
+                let _ = &self.node_array[self.answer.unwrap()]
+                .iter()
+                .for_each(|node| {
                     let bool = node.cached_output.unwrap() > 0.0;
                     ret.push(Types::Boolean(bool));
-                }
+                });
             }
             Types::Float(_) => {
-                for node in &self.node_array[self.answer.unwrap()] {
-                    ret.push(Types::Float(node.cached_output.unwrap()));
-                }
+                let _ = &self.node_array[self.answer.unwrap()]
+                .iter()
+                .for_each(|node| {
+                    ret.push(Types::Float(node.cached_output.unwrap()));  
+                });
             }
             Types::String(_) => {
                 for node in &self.node_array[self.answer.unwrap()] {
@@ -419,7 +415,6 @@ impl GenNetwork {
                     ret.push(Types::String(buff));
                 }
             }
-
         };
         Ok(ret)
     }
