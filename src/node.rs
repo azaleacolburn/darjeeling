@@ -31,7 +31,6 @@ impl Node {
         for i in 0..self.links {
             if DEBUG { println!("Link Val: {:?}", self.link_vals[i]); }
             let val: f32 = match self.link_vals[i] {
-
                 Some(val) => val,
                 None => 0.00
             };
@@ -65,7 +64,7 @@ impl Node {
                 derivative = y * (1.0 - y);
             },
             ActivationFunction::Linear => {
-                derivative = 1.0;
+                derivative = 2.0;
             }, 
             ActivationFunction::Tanh => {
                 derivative = 1.0 - unsafe { std::intrinsics::powf32(y, 2.0) };
