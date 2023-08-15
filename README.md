@@ -184,7 +184,9 @@ If you want to contribute, check to the todo or issues, fork the code, and make 
 - Be patient to people of all experience and skill levels.
 
 # TODO:
+- Make generation better(seriously, it doesn't give good results right now)
 - Add Support for [Polars](https://www.pola.rs/) Dataframes
+- Make data manipulation and input formatting easier
 - Optimize
 
 Dataframes and series' are now deprecated
