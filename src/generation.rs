@@ -196,16 +196,25 @@ impl GenNetwork {
                 data[line].answer = Some(Boolean(true));
                 outputs.push(data[line].clone());
             }
-            // We still need to figure out how to accurately deal with distinguishing error affecting the generative model 
-            match (unsafe { distinguishing_model.read() }).learn( // read() very well might be the wrong function, be careful
+            println!("THIS IS BEFORE WE TRAIN THE DISTINGUISHING MODEL");
+            // if distinguishing_model.is_some() {
+            println!("distinguishing: {}", unsafe { distinguishing_model.read() });
+            // }
+            println!("test");
+            // Do we train a new one from scratch or do we continue training the old one
+            // We still need to figure out how to accurately deal with distinguishing error affecting the generative model
+            let mut new_model: CatNetwork = CatNetwork::new(self.node_array[self.answer.unwrap()].len() as i32, distinguising_hidden_neurons, 2, distinguising_hidden_layers, distinguising_activation);
+            match new_model.learn( // read() very well might be the wrong function, be careful
                 data, 
-                vec![Boolean(true), Boolean(false)], 
-                distinguising_learning_rate, 
-                &("distinguishing".to_owned() + &name), distinguishing_target_err_percent) 
+                vec![Boolean(true), Boolean(false)],
+                distinguising_learning_rate,
+                &("distinguishing".to_owned() + &name), distinguishing_target_err_percent, false) 
                 {
                     Ok((_name, _err_percent, errmse)) => mse = errmse,
                     Err(error) => return Err(DarjeelingError::DisinguishingModelError(error.to_string()))
                 };
+
+            unsafe { distinguishing_model.write(new_model) };
 
             self.backpropogate(learning_rate, hidden_layers as i32, mse);
             epochs += 1.0;

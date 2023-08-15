@@ -7,7 +7,7 @@ use crate::{
     activation::ActivationFunction,
     dbg_println
 };
-use std::{fs, path::Path};
+use std::{fs, path::Path, fmt::{self, Debug}};
 use serde::{Deserialize, Serialize};
 use rand::{Rng, seq::SliceRandom, thread_rng};
 use rayon::prelude::*;
@@ -114,10 +114,12 @@ impl CatNetwork {
     /// Try fiddling with this one, but -1.5 - 1.5 is recommended to start.
     /// - Name: The name of the network
     /// - Target Error Percent: The error percent at which the network will be stop training, checked at the begining of each new epoch.
+    /// - Write: True of you want to write the model to a file, false otherwise
     /// 
     /// ## Returns
     /// The fallible: 
     /// - name of the model that this neural network trained(the name parameter with a random u32 appended)
+    /// some if write is true, none is write is false
     /// - the error percentage of the last epoch
     /// - the mse of the training
     /// 
@@ -157,7 +159,7 @@ impl CatNetwork {
     /// let mut data: Vec<Input> = xor_file();
     /// let mut net = CatNetwork::new(2, 2, 2, 1, ActivationFunction::Sigmoid);
     /// let learning_rate = 1.0;
-    /// let (model_name, error_percentage, mse) = net.learn(&mut data, categories, learning_rate, "xor", 99.0).unwrap();
+    /// let (model_name, error_percentage, mse) = net.learn(&mut data, categories, learning_rate, "xor", 99.0, true).unwrap();
     /// ```
     pub fn learn<'b>(
         &'b mut self, 
@@ -165,8 +167,10 @@ impl CatNetwork {
         categories: Vec<Types>, 
         learning_rate: f32, 
         name: &str,
-        target_err_percent: f32
-    ) -> Result<(String, f32, f32), DarjeelingError> {
+        target_err_percent: f32,
+        write: bool
+    ) -> Result<(Option<String>, f32, f32), DarjeelingError> {
+        println!("here");
         let mut epochs = 0.0;
         let mut sum = 0.0;
         let mut count = 0.0;
@@ -175,6 +179,7 @@ impl CatNetwork {
         let mut mse = 0.0;
 
         self.categorize(categories);
+        println!("here1");
         
         while err_percent < target_err_percent {
             count = 0.0;
@@ -205,12 +210,14 @@ impl CatNetwork {
             //if err_percent - old_err_percent < 0.00000001 { break; }
 
         }
-        let model_name: String;
-        match self.write_model(&name) {
-            Ok(m_name) => {
-                model_name = m_name;
-            },
-            Err(err) => return Err(err),
+        let mut model_name: Option<String> = None;
+        if write {
+            match self.write_model(&name) {
+                Ok(m_name) => {
+                    model_name = Some(m_name);
+                },
+                Err(err) => return Err(err),
+            }
         }
 
         println!("Training: Finished with accuracy of {:?}/{:?} or {:?} percent after {:?} epochs\nmse: {}", sum, count, err_percent, epochs, mse);
@@ -587,5 +594,17 @@ impl CatNetwork {
 
     fn set_activation_func(&mut self, new_activation_function: ActivationFunction) {
         self.activation_function = new_activation_function;
+    }
+}
+
+impl fmt::Display for CatNetwork {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut buff = String::from("");
+        self.node_array.iter().for_each(|layer| {
+            layer.iter().for_each(|node| {
+                buff.push_str(format!("{:?}", node).as_str());
+            })
+        });
+        write!(f, "{}", buff)
     }
 }

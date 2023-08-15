@@ -33,8 +33,8 @@ fn train_network_xor(mut data: Vec<Input>, categories: Vec<Types>, learning_rate
     let hidden_layers: i32 = 1;
     let mut net = CatNetwork::new(input_num, hidden_num, answer_num, hidden_layers, ActivationFunction::Sigmoid);
 
-    match net.learn(&mut data, categories, learning_rate, "xor", 99.0) {
-        Ok((model_name, _err_percent, _mse)) => Some(model_name),
+    match net.learn(&mut data, categories, learning_rate, "xor", 99.0, true) {
+        Ok((model_name, _err_percent, _mse)) => Some(model_name.expect("write is true")),
         Err(_err) => None
     }
 }
@@ -89,9 +89,9 @@ fn train_test_digits() {
 fn train_network_digits(mut data: Vec<Input>, categories: Vec<Types>, learning_rate: f32) -> Option<String> {
     let mut net = CatNetwork::new(64, 128, 10, 1, ActivationFunction::Sigmoid);
 
-    match net.learn(&mut data, categories, learning_rate, "digits", 99.0) {
+    match net.learn(&mut data, categories, learning_rate, "digits", 99.0, true) {
 
-        Ok((model_name, _err_percent, _mse)) => Some(model_name),
+        Ok((model_name, _err_percent, _mse)) => Some(model_name.expect("write is true")),
 
         Err(error) => panic!("{:?}", error)
     }
