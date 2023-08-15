@@ -169,7 +169,7 @@ impl GenNetwork {
     /// let model_name: String = net.learn(&mut data, 0.5, "gen", 100, 0.5, 10, 1, ActivationFunction::Sigmoid, 99.0).unwrap();
     /// let new_data: Vec<Input> = net.test(data).unwrap();
     /// ```
-    pub fn learn(
+    pub fn learn( // Frankly this whole function is disgusting and needs to be burned
         &mut self, 
         data: &mut Vec<Input>, 
         learning_rate: f32, 
@@ -180,11 +180,10 @@ impl GenNetwork {
     ) -> Result<String, DarjeelingError> {
         let mut epochs: f32 = 0.0;
         let hidden_layers = self.node_array.len() - 2;
-        let mut model_name: Option<String> = None;
+        let distinguishing_model: *mut CatNetwork = &mut CatNetwork::new(self.node_array[self.answer.unwrap()].len() as i32, distinguising_hidden_neurons, 2, distinguising_hidden_layers, distinguising_activation);
         let mut outputs: Vec<Input> = vec![];
         for _i in 0..max_cycles {
-            #[allow(unused_assignments)]
-            let mut mse = 0.0; // mse is for a single epoch
+            let mse: f32;
             data.shuffle(&mut thread_rng());
             for line in 0..data.len() {
                 if DEBUG { println!("Training Checkpoint One Passed") }
@@ -197,37 +196,18 @@ impl GenNetwork {
                 data[line].answer = Some(Boolean(true));
                 outputs.push(data[line].clone());
             }
-            if model_name.is_some() {
-                let mut new_model = CatNetwork::read_model(model_name.clone().unwrap()).unwrap();
-                match std::fs::remove_file(model_name.unwrap()) {
-                    Ok(_) => {
-                        model_name = match new_model.learn(
-                            &mut outputs, 
-                            vec![Boolean(true), Boolean(false)], 
-                            distinguising_learning_rate, &("distinguishing".to_owned() + &name), distinguishing_target_err_percent) 
-                            {
-                                Ok((name, _err_percent, errmse)) => { mse = errmse; Some(name) },
-                                Err(error) => return Err(DarjeelingError::DisinguishingModelError(error.to_string()))
-                            };
-                    },
-                    Err(err) => return Err(DarjeelingError::RemoveModelFailed(err.to_string()))
+            // We still need to figure out how to accurately deal with distinguishing error affecting the generative model 
+            match (unsafe { distinguishing_model.read() }).learn( // read() very well might be the wrong function, be careful
+                data, 
+                vec![Boolean(true), Boolean(false)], 
+                distinguising_learning_rate, 
+                &("distinguishing".to_owned() + &name), distinguishing_target_err_percent) 
+                {
+                    Ok((_name, _err_percent, errmse)) => mse = errmse,
+                    Err(error) => return Err(DarjeelingError::DisinguishingModelError(error.to_string()))
                 };
-            } else {
-                let mut new_model = CatNetwork::new(self.node_array[self.answer.unwrap()].len() as i32, distinguising_hidden_neurons, 2, distinguising_hidden_layers, distinguising_activation);
 
-                model_name = match new_model.learn(
-                    data, 
-                    vec![Boolean(true), Boolean(false)], 
-                    distinguising_learning_rate, 
-                    &("distinguishing".to_owned() + &name), distinguishing_target_err_percent) 
-                    {
-                        Ok((name, _err_percent, errmse)) => { mse = errmse; Some(name) },
-                        Err(error) => return Err(DarjeelingError::DisinguishingModelError(error.to_string()))
-                    };                
-            }
-            
             self.backpropogate(learning_rate, hidden_layers as i32, mse);
-
             epochs += 1.0;
             println!("Epoch: {:?}", epochs);
         }
