@@ -196,11 +196,6 @@ impl GenNetwork {
                 data[line].answer = Some(Boolean(true));
                 outputs.push(data[line].clone());
             }
-            println!("THIS IS BEFORE WE TRAIN THE DISTINGUISHING MODEL");
-            // if distinguishing_model.is_some() {
-            println!("distinguishing: {}", unsafe { distinguishing_model.read() });
-            // }
-            println!("test");
             // Do we train a new one from scratch or do we continue training the old one
             // We still need to figure out how to accurately deal with distinguishing error affecting the generative model
             let mut new_model: CatNetwork = CatNetwork::new(self.node_array[self.answer.unwrap()].len() as i32, distinguising_hidden_neurons, 2, distinguising_hidden_layers, distinguising_activation);
