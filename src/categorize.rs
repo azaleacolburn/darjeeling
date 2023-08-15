@@ -170,7 +170,6 @@ impl CatNetwork {
         target_err_percent: f32,
         write: bool
     ) -> Result<(Option<String>, f32, f32), DarjeelingError> {
-        println!("here");
         let mut epochs = 0.0;
         let mut sum = 0.0;
         let mut count = 0.0;
@@ -179,7 +178,6 @@ impl CatNetwork {
         let mut mse = 0.0;
 
         self.categorize(categories);
-        println!("here1");
         
         while err_percent < target_err_percent {
             count = 0.0;
