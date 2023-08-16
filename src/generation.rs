@@ -556,8 +556,10 @@ impl GenNetwork {
         let a = self.answer.expect("initialized network");
         self.node_array.push(self.node_array[a].clone());
         self.node_array[a] = vec![];
+        let links = self.node_array[a - 1].len();
         (0..size).into_iter().for_each(|i| {
             self.node_array[a].push(Node::new(&vec![], Some(rng.gen_range(-0.5..0.5))));
+            self.node_array[a][i].links = links;
             (0..self.node_array[a][i].links).into_iter().for_each(|_| {
                 self.node_array[a][i].link_weights.push(rng.gen_range(-0.5..0.5));
                 self.node_array[a][i].link_vals.push(None);
