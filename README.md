@@ -28,7 +28,9 @@ darjeeling = "0.3.2"
     let answer_num = 2;
     let hidden_layers = 1;
     let mut net = categorize::NeuralNetwork::new(input_num, hidden_num, answer_num, hidden_layers, ActivationFunction::Sigmoid);
+    net.add_hidden_layer_with_size(2);
 ```
+You can also add hidden layers with a set number of neurons, since during initialization, all hidden layers must be the same size.
 2. Format your data as Inputs
 ```rust
     use darjeeling::{
