@@ -186,7 +186,7 @@ impl GenNetwork {
             let mse: f32;
             data.shuffle(&mut thread_rng());
             for line in 0..data.len() {
-                if DEBUG { println!("Training Checkpoint One Passed") }
+                dbg_println!("Training Checkpoint One Passed");
                 self.push_downstream(data, line as i32);
                 let mut output = vec![];
                 for i in 0..self.node_array[self.answer.unwrap()].len() {
@@ -549,6 +549,21 @@ impl GenNetwork {
         // println!("node array {:?}", net.node_array);
 
         Ok(net)
+    }
+
+    pub fn add_hidden_layer_with_size(&mut self, size: usize) {
+        let mut rng = rand::thread_rng();
+        let a = self.answer.expect("initialized network");
+        self.node_array.push(self.node_array[a].clone());
+        self.node_array[a] = vec![];
+        (0..size).into_iter().for_each(|i| {
+            self.node_array[a].push(Node::new(&vec![], Some(rng.gen_range(-0.5..0.5))));
+            (0..self.node_array[a][i].links).into_iter().for_each(|_| {
+                self.node_array[a][i].link_weights.push(rng.gen_range(-0.5..0.5));
+                self.node_array[a][i].link_vals.push(None);
+            })
+        });
+        self.answer = Some(a + 1);
     }
 }
 

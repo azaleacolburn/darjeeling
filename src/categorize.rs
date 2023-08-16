@@ -16,7 +16,6 @@ use rayon::prelude::*;
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CatNetwork {
     node_array: Vec<Vec<Node>>,
-    sensor: Option<usize>,
     answer: Option<usize>,
     parameters: Option<u128>,
     activation_function: ActivationFunction
@@ -50,11 +49,11 @@ impl CatNetwork {
     /// let mut net: CatNetwork = CatNetwork::new(inputs, hidden, answer, hidden_layers, ActivationFunction::Sigmoid);
     /// ```
     pub fn new(input_num: i32, hidden_num: i32, answer_num: i32, hidden_layers: i32, activation_function: ActivationFunction) -> CatNetwork {
-        let mut net: CatNetwork = CatNetwork { node_array: vec![], sensor: Some(0), answer: Some(hidden_layers as usize + 1), parameters: None, activation_function};
+        let mut net: CatNetwork = CatNetwork { node_array: vec![], answer: Some(hidden_layers as usize + 1), parameters: None, activation_function};
         let mut rng = rand::thread_rng();
         net.node_array.push(vec![]);    
         for _i in 0..input_num {
-            net.node_array[net.sensor.unwrap()].push(Node::new(&vec![], None));
+            net.node_array[0].push(Node::new(&vec![], None));
         }
 
         for i in 1..hidden_layers + 1 {
@@ -296,11 +295,11 @@ impl CatNetwork {
     /// Passes in data to the sensors, pushs data 'downstream' through the network
     fn push_downstream(&mut self, data: &mut Vec<Input>, line: usize) {
         // Passes in data for input layer
-        (0..self.node_array[self.sensor.unwrap()].len())
+        (0..self.node_array[0].len())
             .into_iter()
             .for_each(|i| {
-                let input  = data[line].inputs[i];
-                self.node_array[self.sensor.unwrap()][i].cached_output = Some(input);
+                let input: f32 = data[line].inputs[i];
+                self.node_array[0][i].cached_output = Some(input);
             });
 
         // Feed-forward values for hidden and output layers
@@ -571,12 +570,10 @@ impl CatNetwork {
             }  
         }
         //println!("node array size {}", node_array.len());
-        let sensor: Option<usize> = Some(0);
         let answer: Option<usize> = Some(node_array.len() - 1);
         
         let net = CatNetwork {
             node_array,
-            sensor,
             answer,
             parameters: None,
             activation_function: match activation 
@@ -590,8 +587,25 @@ impl CatNetwork {
         Ok(net)
     }
 
-    fn set_activation_func(&mut self, new_activation_function: ActivationFunction) {
+    pub fn set_activation_func(&mut self, new_activation_function: ActivationFunction) {
         self.activation_function = new_activation_function;
+    }
+
+    pub fn add_hidden_layer_with_size(&mut self, size: usize) {
+        let mut rng = rand::thread_rng();
+        let a = self.answer.expect("initialized network");
+        self.node_array.push(self.node_array[a].clone());
+        self.node_array[a] = vec![];
+        let links = self.node_array[a - 1].len();
+        (0..size).into_iter().for_each(|i| {
+            self.node_array[a].push(Node::new(&vec![], Some(rng.gen_range(-0.5..0.5))));
+            self.node_array[a][i].links = links;
+            (0..self.node_array[a][i].links).into_iter().for_each(|_| {
+                self.node_array[a][i].link_weights.push(rng.gen_range(-0.5..0.5));
+                self.node_array[a][i].link_vals.push(None);
+            })
+        });
+        self.answer = Some(a + 1);
     }
 }
 
