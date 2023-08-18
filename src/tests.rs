@@ -177,9 +177,10 @@ pub fn gen_data_file<'a>() -> Vec<Input> {
 
 #[test]
 pub fn test_add_hidden_layers() {
-    let mut net = CatNetwork::new(2, 2, 2, 1, ActivationFunction::Sigmoid);
+    let mut net = CatNetwork::new(2, 2, 2, 1, ActivationFunction::Linear);
     println!("init network");
     net.add_hidden_layer_with_size(2);
+    net.set_activation_func(ActivationFunction::Sigmoid);
     println!("added layer");
     let _ = net.learn(&mut xor_file(), vec![types::Types::Integer(1), types::Types::Integer(0)], 0.5, "test", 99.0, true);
 }
