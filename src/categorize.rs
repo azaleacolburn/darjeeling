@@ -361,11 +361,11 @@ impl CatNetwork {
             *count += 1.0;
         }
 
-        (brightest_node.category.clone().unwrap(), CatNetwork::calculate_err_for_generation_model(mse, *sum, *count))
+        (brightest_node.category.clone().unwrap(), CatNetwork::calculate_err_for_generation_model(mse, brightest_node))
     }
 
-    fn calculate_err_for_generation_model(mse: &mut f32, sum: f32, count: f32) -> f32 {
-        *mse += f32::powi(sum - count, 2);
+    fn calculate_err_for_generation_model(mse: &mut f32, node: &Node) -> f32 {
+        *mse += f32::powi(node.correct_answer.unwrap() - node.cached_output.unwrap(), 2);
         *mse
     }
 

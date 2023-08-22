@@ -169,7 +169,7 @@ impl GenNetwork {
     /// let model_name: String = net.learn(&mut data, 0.5, "gen", 100, 0.5, 10, 1, ActivationFunction::Sigmoid, 99.0).unwrap();
     /// let new_data: Vec<Input> = net.test(data).unwrap();
     /// ```
-    pub fn learn( // Frankly this whole function is disgusting and needs to be burned
+    pub fn learn( // Frankly this whole function is disgusting and needs to be burned; I concure from the future
         &mut self, 
         data: &mut Vec<Input>, 
         learning_rate: f32, 
@@ -196,11 +196,12 @@ impl GenNetwork {
                 data[line].answer = Some(Boolean(true));
                 outputs.push(data[line].clone());
             }
+            data.shuffle(&mut thread_rng());
             // Do we train a new one from scratch or do we continue training the old one
             // We still need to figure out how to accurately deal with distinguishing error affecting the generative model
             let mut new_model: CatNetwork = CatNetwork::new(self.node_array[self.answer.unwrap()].len() as i32, distinguising_hidden_neurons, 2, distinguising_hidden_layers, distinguising_activation);
-            match new_model.learn( // read() very well might be the wrong function, be careful
-                data, 
+            match new_model.learn(
+                data,
                 vec![Boolean(true), Boolean(false)],
                 distinguising_learning_rate,
                 &("distinguishing".to_owned() + &name), distinguishing_target_err_percent, false) 
