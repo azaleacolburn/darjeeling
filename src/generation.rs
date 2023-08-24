@@ -179,7 +179,6 @@ impl GenNetwork {
         distinguishing_target_err_percent: f32
     ) -> Result<String, DarjeelingError> {
         let mut epochs: f32 = 0.0;
-        let hidden_layers = self.node_array.len() - 2;
         let distinguishing_model: *mut CatNetwork = &mut CatNetwork::new(self.node_array[self.answer.unwrap()].len() as i32, distinguising_hidden_neurons, 2, distinguising_hidden_layers, distinguising_activation);
         let mut outputs: Vec<Input> = vec![];
         for _i in 0..max_cycles {
@@ -196,7 +195,6 @@ impl GenNetwork {
                 data[line].answer = Some(Boolean(true));
                 outputs.push(data[line].clone());
             }
-            data.shuffle(&mut thread_rng());
             // Do we train a new one from scratch or do we continue training the old one
             // We still need to figure out how to accurately deal with distinguishing error affecting the generative model
             let mut new_model: CatNetwork = CatNetwork::new(self.node_array[self.answer.unwrap()].len() as i32, distinguising_hidden_neurons, 2, distinguising_hidden_layers, distinguising_activation);
@@ -212,7 +210,7 @@ impl GenNetwork {
 
             unsafe { distinguishing_model.write(new_model) };
 
-            self.backpropogate(learning_rate, hidden_layers as i32, mse);
+            self.backpropogate(learning_rate, mse);
             epochs += 1.0;
             println!("Epoch: {:?}", epochs);
         }
@@ -282,7 +280,8 @@ impl GenNetwork {
         largest_node
     }
     /// Goes back through the network adjusting the weights of the all the neurons based on their error signal
-    fn backpropogate(&mut self, learning_rate: f32, hidden_layers: i32, mse: f32) {
+    fn backpropogate(&mut self, learning_rate: f32, mse: f32) {
+        let hidden_layers = (self.node_array.len() - 2) as i32;
         (self.node_array[self.answer.unwrap()])
             .par_iter_mut()
             .for_each(|answer_node| {

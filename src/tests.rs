@@ -1,5 +1,6 @@
 use core::panic;
-use std::{io::{BufReader, BufRead}, fs};
+use std::{io::{BufReader, BufRead}, fs, time::Duration, thread::sleep};
+
 use crate::{
     input::Input, 
     DEBUG, 
@@ -8,12 +9,20 @@ use crate::{
     // series::Series, 
     types::{Types, self},
     activation::ActivationFunction, 
-    generation::GenNetwork
+    generation::GenNetwork, bench
 };
+
+// #[test]
+// pub fn bench() {
+//     bench!(CatNetwork::new(4, 4, 4, 1, ActivationFunction::Sigmoid));
+//     let mut net = CatNetwork::new(2, 2, 2, 1, ActivationFunction::Sigmoid);
+//     let _ = net.learn(&mut xor_file(), vec![types::Types::Float(0.0), types::Types::Float(1.0)], 0.5, "bench", 0.99, true);
+
+// }
 
 #[test]
 pub fn train_test_xor() {
-    let learning_rate:f32 = 0.1;
+    let learning_rate = 0.1;
     let categories: Vec<Types> = categories_float_format(vec![1.0, 0.0]);
     let mut data: Vec<Input> = xor_file();
 
@@ -27,10 +36,10 @@ pub fn train_test_xor() {
 
 /// Returns None if the learn function returns an Err variant
 fn train_network_xor(mut data: Vec<Input>, categories: Vec<Types>, learning_rate: f32) -> Option<String> {
-    let input_num: i32 = 2;
-    let hidden_num: i32 = 2;
-    let answer_num: i32 = 2;
-    let hidden_layers: i32 = 1;
+    let input_num = 2;
+    let hidden_num = 2;
+    let answer_num = 2;
+    let hidden_layers = 1;
     let mut net = CatNetwork::new(input_num, hidden_num, answer_num, hidden_layers, ActivationFunction::Sigmoid);
 
     match net.learn(&mut data, categories, learning_rate, "xor", 99.0, true) {
