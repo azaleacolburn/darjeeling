@@ -11,7 +11,7 @@ use crate::{
 use std::{fs, path::Path, fmt::{self, Debug}};
 use serde::{Deserialize, Serialize};
 use rand::{Rng, seq::SliceRandom, thread_rng};
-use rayon::prelude::*;
+// use rayon::prelude::*;
 
 /// The categorization Neural Network struct
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -242,13 +242,11 @@ impl CatNetwork {
             if data[line].answer.is_some() {
                 net.assign_answers(&mut data[line]);
             }
-            ; // Do we actually want to do this?
+            // Do we actually want to do this?
             net.push_downstream(&mut data, line);
             dbg_println!("Sum: {:?} Count: {:?}", sum, count);            
             answers.push((
-                Some(
-                    net.self_analysis(&mut None, &mut sum, &mut count, &mut data, &mut mse, line).0
-                ))
+                Some(net.self_analysis(&mut None, &mut sum, &mut count, &mut data, &mut mse, line).0))
                 .clone().expect("Wrapped in Some()"));
 
             dbg_println!("Sum: {:?} Count: {:?}", sum, count);
@@ -317,7 +315,7 @@ impl CatNetwork {
         data: &mut Vec<Input>, 
         mse: &mut f32, 
         line: usize
-    ) -> (Types, f32) {
+    ) -> (Types, Option<f32>) {
         dbg_println!("answer {}", self.answer.unwrap());
         dbg_println!("largest index {}", self.largest_node());
         dbg_println!("{:?}", self);
@@ -344,8 +342,12 @@ impl CatNetwork {
             }
             *count += 1.0;
         }
-
-        (brightest_node.category.clone().unwrap(), CatNetwork::calculate_err_for_generation_model(mse, brightest_node))
+        if epochs.is_some() {
+            (brightest_node.category.clone().unwrap(), Some(CatNetwork::calculate_err_for_generation_model(mse, brightest_node)))
+        } else {
+            (brightest_node.category.clone().unwrap(), None)
+        }
+        
     }
 
     fn calculate_err_for_generation_model(mse: &mut f32, node: &Node) -> f32 {
