@@ -40,7 +40,7 @@ impl GenNetwork {
     /// ``` rust
     /// use darjeeling::{
     ///     activation::ActivationFunction,
-    ///     CatNetwork
+    ///     generation::GenNetwork
     /// };
     /// 
     /// let inputs: i32 = 10;

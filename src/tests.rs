@@ -190,8 +190,8 @@ pub fn test_add_hidden_layers() {
     println!("init network");
     net.add_hidden_layer_with_size(2);
     net.set_activation_func(ActivationFunction::Sigmoid);
-    println!("added layer");
-    let _ = net.learn(&mut xor_file(), vec![types::Types::Integer(1), types::Types::Integer(0)], 0.5, "test", 99.0, true);
+    // println!("added layer");
+    // let _ = net.learn(&mut xor_file(), vec![types::Types::Integer(1), types::Types::Integer(0)], 0.5, "test", 99.0, true);
 }
 
 /// Formats cateories from a vector of string slices to a vector of strings

@@ -23,7 +23,7 @@ impl Input  {
     /// use darjeeling::types::Types;
     /// let inputs: Vec<f32> = vec![0.0,1.0];
     /// let answer: Types = Types::String("1".to_string());
-    /// let formated_input: Input = Input::new(inputs, answer);
+    /// let formated_input: Input = Input::new(inputs, Some(answer));
     /// ```
     pub fn new(inputs: Vec<f32>, answer: Option<Types>) -> Input {
 
