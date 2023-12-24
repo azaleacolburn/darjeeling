@@ -144,6 +144,7 @@ Different problems work differently with different learning rates, although I re
     }
 ```
 ## Generation
+DISCLAIMER: I don't actually recommend using the generative AI feature for interesting results, it's horribly unoptimized, and isn't training very well right now.
 
 This program doesn't have a large enough dataset to get interesting results.
 All it does is just create a network and 

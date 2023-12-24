@@ -74,32 +74,22 @@ impl GenNetwork {
             net.node_array[net.answer.unwrap()].push(Node { link_weights: vec![], link_vals: vec![], links: answer_links, err_sig: None, correct_answer: None, cached_output: Some(0.0), category: None, b_weight: None });
         }
         
-        net.node_array
-            .iter_mut()
-            .for_each(|layer| {
-                layer
-                    .iter_mut()
-                    .for_each(|node| {
-                        node.b_weight = Some(rng.gen_range(-0.5..0.5));
-                        dbg_println!("Made it to pushing link weights");
-                        (0..node.links)
-                            .into_iter()
-                            .for_each(|_| {
-                                node.link_weights.push(rng.gen_range(-0.5..0.5));
-                                node.link_vals.push(None);
-                            })
-                    })
-            });
+        net.node_array.iter_mut().for_each(|layer| {
+            layer.iter_mut().for_each(|mut node| {
+                node.b_weight = Some(rng.gen_range(-0.5..0.5));
+                dbg_println!("Made it to pushing link weights");
+                (0..node.links).into_iter().for_each(|_| {
+                    node.link_weights.push(rng.gen_range(-0.5..0.5));
+                    node.link_vals.push(None);
+                })
+            })
+        });
         let mut params = 0;
-        (0..net.node_array.len())
-            .into_iter()
-            .for_each(|i| {
-                (0..net.node_array[i].len())
-                    .into_iter()
-                    .for_each(|j| {
-                        params += 1 + net.node_array[i][j].links as u128;
-                    })
-            });
+        (0..net.node_array.len()).into_iter().for_each(|i| {
+            (0..net.node_array[i].len()).into_iter().for_each(|j| {
+                params += 1 + net.node_array[i][j].links as u128;
+            })
+        });
         net.parameters = Some(params);
         net
     }
@@ -112,14 +102,14 @@ impl GenNetwork {
     /// Try fiddling with this one, but -1.5 - 1.5 is recommended to start.
     /// - Name: The model name
     /// - Max Cycles: The maximum number of epochs the training will run for.
-    /// - Distinguising Learning Rate: The learning rate for the distinguishing model.
+    /// - Distinguishing Learning Rate: The learning rate for the distinguishing model.
     /// - Distinguishing Hidden Neurons: The number of hidden neurons in each layer of the distinguishing model.
     /// - Distinguising Hidden Layers: The number of hidden layers in the distinguishing model.
     /// - Distinguishing Activation: The activation function of the distinguishing model.
-    /// - Distinguishing Target Error Percent: The error percentange at which the distinguishing models will stop training.
+    /// - Distinguishing Target Error Percent: The error percentage at which the distinguishing models will stop training.
     /// 
     /// ## Returns
-    /// The falable name of the model that this neural network trained
+    /// The fallible name of the model that this neural network trained
     /// 
     /// ## Err
     /// ### WriteModelFailed
@@ -130,7 +120,7 @@ impl GenNetwork {
     /// Change the name or retrain
     /// 
     /// ### RemoveModelFailed
-    /// Everytime a new distinguishing model is written to the project folder, the previous one has to be removed.
+    /// Every time a new distinguishing model is written to the project folder, the previous one has to be removed.
     /// This removal failed,
     /// 
     /// ### DistinguishingModel 
@@ -139,7 +129,7 @@ impl GenNetwork {
     /// ### UnknownError
     /// Not sure what happened, but something failed
     /// 
-    /// Make an issue on the [darjeeling](https://github.com/Ewie21/darjeeling) github page
+    /// Make an issue on the [darjeeling](https://github.com/Ewie21/darjeeling) GitHub page
     /// Or contact me at elocolburn@comcast.net
     /// 
     /// ## TODO: Refactor to pass around the neural net, not the model name
@@ -169,7 +159,7 @@ impl GenNetwork {
     /// let model_name: String = net.learn(&mut data, 0.5, "gen", 100, 0.5, 10, 1, ActivationFunction::Sigmoid, 99.0).unwrap();
     /// let new_data: Vec<Input> = net.test(data).unwrap();
     /// ```
-    pub fn learn( // Frankly this whole function is disgusting and needs to be burned; I concure from the future
+    pub fn learn( // Frankly this whole function is disgusting and needs to be burned; I concur from the future
         &mut self, 
         data: &mut Vec<Input>, 
         learning_rate: f32, 
@@ -367,25 +357,19 @@ impl GenNetwork {
         let mut ret: Vec<Types> = vec![];
         match expected_type {
             Types::Integer(_) => {
-                let _ = &self.node_array[self.answer.unwrap()]
-                .iter()
-                .for_each(|node| {
+                let _ = &self.node_array[self.answer.unwrap()].iter().for_each(|node| {
                     let int = node.cached_output.unwrap() as i32;
                     ret.push(Types::Integer(int));
                 });
             }
             Types::Boolean(_) => {
-                let _ = &self.node_array[self.answer.unwrap()]
-                .iter()
-                .for_each(|node| {
+                let _ = &self.node_array[self.answer.unwrap()].iter().for_each(|node| {
                     let bool = node.cached_output.unwrap() > 0.0;
                     ret.push(Types::Boolean(bool));
                 });
             }
             Types::Float(_) => {
-                let _ = &self.node_array[self.answer.unwrap()]
-                .iter()
-                .for_each(|node| {
+                let _ = &self.node_array[self.answer.unwrap()].iter().for_each(|node| {
                     ret.push(Types::Float(node.cached_output.unwrap()));  
                 });
             }
@@ -412,7 +396,7 @@ impl GenNetwork {
     /// ### WriteModelFailed:
     /// Writing to the file failed
     /// 
-    /// Wraps the models name
+    /// Wraps the model's name
     /// ### UnknownError:
     /// Something else went wrong
     /// 
@@ -465,7 +449,7 @@ impl GenNetwork {
         }
     }
 
-    /// Reads a serizalized Neural Network
+    /// Reads a serialized Neural Network
     /// 
     /// ## Params
     /// - Model Name: The name(or more helpfully the path) of the model to be read
@@ -474,7 +458,7 @@ impl GenNetwork {
     /// A neural network read from a serialized .darj file
     /// 
     /// ## Err
-    /// If the file cannnot be read, or if the file does not contain a valid serialized Neural Network
+    /// If the file cannot be read, or if the file does not contain a valid serialized Neural Network
     pub fn read_model(model_name: String) -> Result<GenNetwork, DarjeelingError> {
 
         println!("Loading model");
