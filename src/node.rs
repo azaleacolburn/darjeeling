@@ -67,7 +67,7 @@ impl Node {
                 derivative = 2.0;
             }, 
             ActivationFunction::Tanh => {
-                derivative = 1.0 - unsafe { std::intrinsics::powf32(y, 2.0) };
+                derivative = 1.0 - y.powf(2.0);
             }
         }
         self.err_sig = Some((self.correct_answer.unwrap() - y) * derivative);
@@ -87,7 +87,8 @@ impl Node {
                 derivative = 2.0;
             }, 
             ActivationFunction::Tanh => {
-                derivative = 1.0 - unsafe { std::intrinsics::powf32(y, 2.0) };
+                derivative = 1.0 - y.powf(2.0);
+                //derivative = 1.0 - unsafe { std::intrinsics::powf32(y, 2.0) };
             }
         }
         self.err_sig = Some(mse * derivative);

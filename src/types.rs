@@ -96,7 +96,7 @@ impl Default for Types {
 pub fn fmt_str_type_vec(list: Vec<&'static str>) -> Vec<Types> {
     let mut fmted_list: Vec<Types> = vec![];
     for i in 0..list.len() {
-        fmted_list.push(Types::String(list[i].clone().try_into().unwrap()))
+        fmted_list.push(Types::String(list[i].try_into().unwrap()))
     }
 
     fmted_list

@@ -1,5 +1,5 @@
 use core::panic;
-use std::{io::{BufReader, BufRead}, fs, time::Duration, thread::sleep};
+use std::{io::{BufReader, BufRead}, fs};
 
 use crate::{
     input::Input, 
@@ -7,9 +7,9 @@ use crate::{
     categorize::CatNetwork, 
     // dataframe::DataFrame,
     // series::Series, 
-    types::{Types, self},
+    types::{Types},
     activation::ActivationFunction, 
-    generation::GenNetwork, bench
+    generation::GenNetwork
 };
 
 // #[test]
@@ -28,7 +28,7 @@ pub fn train_test_xor() {
 
     // Panics if unwraps a None value
     let model_name: String = train_network_xor(data.clone(), categories.clone(), learning_rate).unwrap();
-    data.iter_mut().for_each(|mut input| {
+    data.iter_mut().for_each(|input| {
         input.answer = None;
     });
     CatNetwork::test(data, categories, model_name).unwrap();

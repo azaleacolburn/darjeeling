@@ -79,7 +79,7 @@ impl GenNetwork {
             .for_each(|layer| {
                 layer
                     .iter_mut()
-                    .for_each(|mut node| {
+                    .for_each(|node| {
                         node.b_weight = Some(rng.gen_range(-0.5..0.5));
                         dbg_println!("Made it to pushing link weights");
                         (0..node.links)

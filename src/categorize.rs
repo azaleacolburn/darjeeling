@@ -76,7 +76,7 @@ impl CatNetwork {
             net.node_array[net.answer.unwrap()][i as usize].links = answer_links;
         });
         net.node_array.iter_mut().for_each(|layer| {
-            layer.iter_mut().for_each(|mut node| {
+            layer.iter_mut().for_each(|node| {
                 node.b_weight = Some(rng.gen_range(-0.5..0.5));
                 dbg_println!("Pushing link weights");
                 (0..node.links).into_iter().for_each(|_| {
@@ -272,7 +272,7 @@ impl CatNetwork {
     }
     
     fn assign_answers(&mut self, input: &mut Input) {
-        let _ = self.node_array[self.answer.unwrap()].iter_mut().for_each(|mut node| {
+        let _ = self.node_array[self.answer.unwrap()].iter_mut().for_each(|node| {
             // println!("{:?}", input);
             if node.category.as_ref().unwrap() == input.answer.as_ref().unwrap() {
                 node.correct_answer = Some(1.0);
