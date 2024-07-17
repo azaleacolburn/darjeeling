@@ -1,7 +1,7 @@
 # darjeeling
-[![Latest version](https://img.shields.io/crates/v/darjeeling.svg)](https://crates.io/crates/darjeeling)
-[![Documentation](https://docs.rs/darjeeling/badge.svg)](https://docs.rs/darjeeling)
-![License](https://img.shields.io/crates/l/darjeeling.svg)
+[![Latest version](https://img.shields.io/crates/v/darjeeling.svg?style=for-the-badge)](https://crates.io/crates/darjeeling)
+[![Documentation](https://img.shields.io/docsrs/darjeeling.svg?style=for-the-badge)](https://docs.rs/darjeeling)
+[![License](https://img.shields.io/crates/l/darjeeling.svg?style=for-the-badge)](https://github.com/Ewie21/darjeeling/blob/main/LICENSE)
 
 Machine learning tools for Rust
 
