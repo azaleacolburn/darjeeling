@@ -5,9 +5,6 @@
 
 Machine learning tools for Rust
 
-### Contact
-elocolburn@comcast.net
-
 # Installation
 Add the following dependencies to your `Cargo.toml` file
 ```toml
@@ -147,7 +144,7 @@ Different problems work differently with different learning rates, although I re
 DISCLAIMER: I don't actually recommend using the generative AI feature for interesting results, it's horribly unoptimized, and isn't training very well right now.
 
 This program doesn't have a large enough dataset to get interesting results.
-All it does is just create a network and 
+All it does is just trains a network to verify a proof of concept.
 ```rust
     use darjeeling::{
          generation::NeuralNetwork,
@@ -184,6 +181,8 @@ If you want to contribute, check to the todo or issues, fork the code, and make 
 - Be respectful of all kinds of people and their differences.
 - Be kind.
 - Be patient to people of all experience and skill levels.
+
+# [Contact Me](elocolburn@comcast.net)
 
 # TODO:
 - Make generation better(seriously, it doesn't give good results right now)
