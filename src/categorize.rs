@@ -14,11 +14,9 @@ use std::{
 /// The categorization Neural Network struct
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CatNetwork {
-    node_array: Vec<Vec<Node>>,
-    answer: Option<usize>,
-    parameters: Option<u128>,
-    activation_function: ActivationFunction,
+    node_array: Box<[Box<[Node]>]>,
 }
+
 #[warn(clippy::unwrap_in_result)]
 
 impl CatNetwork {
@@ -44,69 +42,47 @@ impl CatNetwork {
     /// let hidden: usize = 40;
     /// let answer: usize = 2;
     /// let hidden_layers: usize = 1;
-    /// let mut net: CatNetwork = CatNetwork::new(inputs, hidden, answer, hidden_layers, ActivationFunction::Sigmoid);
+    /// let mut net = CatNetwork::new(inputs, hidden, answer, hidden_layers, ActivationFunction::Sigmoid);
     /// ```
     pub fn new(
-        input_num: usize,
-        hidden_num: usize,
-        answer_num: usize,
+        input_nodes: usize,
+        hidden_nodes: usize,
+        answer_nodes: usize,
         hidden_layers: usize,
-        activation_function: ActivationFunction,
     ) -> CatNetwork {
-        let mut net: CatNetwork = CatNetwork {
-            node_array: vec![],
-            answer: Some(hidden_layers as usize + 1),
-            parameters: None,
-            activation_function,
-        };
         let mut rng = rand::thread_rng();
 
-        let mut input_row: Vec<Node> = (0..input_num)
-            .map(|_| Node::new(Vec::with_capacity(input_num), Some(0.5)))
-            .collect::<Vec<Node>>();
+        let mut node_array: Vec<Box<[Node]>> = vec![];
 
-        (0..input_num).into_iter().for_each(|_| {
-            input_row.push(Node::new(&vec![], None)); // O(1)+ If only this were C, the glorious O(1)
-        });
+        let input_row: Box<[Node]> = (0..input_nodes)
+            .map(|_| Node::new(vec![1.00; hidden_nodes].into_boxed_slice(), 1.0))
+            .collect::<Box<[Node]>>();
+        node_array.push(input_row);
 
-        (1..hidden_layers + 1).into_iter().for_each(|i| {
-            let mut hidden_vec: Vec<Node> = Vec::with_capacity(hidden_num);
-            let hidden_links = net.node_array[(i - 1) as usize].len();
-            dbg_println!("Hidden Links: {:?}", hidden_links);
-            (0..hidden_num).into_iter().for_each(|i| {
-                hidden_vec.push(Node::new(&vec![], None));
-                hidden_vec[i as usize].links = hidden_links;
-            });
-            net.node_array.push(hidden_vec);
-        });
-
-        let mut answer_row = Vec::with_capacity(answer_num);
-        let answer_links = hidden_num;
-        dbg_println!("Answer Links: {:?}", answer_links);
-        (0..answer_num).into_iter().for_each(|i| {
-            let mut node = Node::new(Vec::with_capacity(answer_links));
-            node.links = answer_links;
-            answer_row.push(node)
-        });
-
-        net.node_array.iter_mut().for_each(|layer| {
-            layer.iter_mut().for_each(|node| {
-                node.b_weight = Some(rng.gen_range(-0.5..0.5));
-                dbg_println!("Pushing link weights");
-                (0..node.links).into_iter().for_each(|_| {
-                    node.link_weights.push(rng.gen_range(-0.5..0.5));
-                    node.link_vals.push(None);
+        (1..hidden_layers + 1).into_iter().for_each(|_| {
+            let hidden_vec: Box<[Node]> = (0..hidden_nodes)
+                .into_iter()
+                .map(|_| {
+                    Node::new(
+                        vec![rng.gen_range(-0.5..0.5); answer_nodes].into_boxed_slice(),
+                        rng.gen_range(-0.5..0.5),
+                    )
                 })
-            })
+                .collect::<Box<[Node]>>();
+            node_array.push(hidden_vec);
         });
-        let mut params = 0;
-        (0..net.node_array.len()).into_iter().for_each(|i| {
-            (0..net.node_array[i].len()).into_iter().for_each(|j| {
-                params += 1 + net.node_array[i][j].links as u128;
-            })
-        });
-        net.parameters = Some(params);
-        net
+
+        // TODO: Make these link weights None or smth
+        let answer_row: Box<[Node]> = (0..answer_nodes)
+            .into_iter()
+            .map(|_| Node::new(vec![0.00; 1].into_boxed_slice(), rng.gen_range(-0.5..0.5)))
+            .collect::<Box<[Node]>>();
+
+        node_array.push(answer_row);
+
+        CatNetwork {
+            node_array: node_array.into_boxed_slice(),
+        }
     }
 
     /// Trains the neural network model to be able to categorize items in a dataset into given categories
@@ -174,6 +150,7 @@ impl CatNetwork {
         name: &str,
         target_err_percent: f32,
         write: bool,
+        activation_function: ActivationFunction,
     ) -> Result<(Option<String>, f32, f32), DarjeelingError> {
         let mut epochs = 0.0;
         let mut sum = 0.0;

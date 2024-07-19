@@ -14,7 +14,9 @@ pub struct Node {
 
 impl Node {
     pub fn new(link_weights: Box<[f32]>, b_weight: f32) -> Node {
-        let link_vals: Box<[f32]> = (0..link_weights.len()).map(|_| 0.00).collect::<Box<[f32]>>();
+        let link_vals: Box<[f32]> = (0..link_weights.len())
+            .map(|_| 0.00)
+            .collect::<Box<[f32]>>();
 
         Node {
             link_weights,
@@ -27,52 +29,52 @@ impl Node {
     }
 
     fn input(&mut self) -> f32 {
-        (0..self.link_weights.len()).into_iter().map(|i| {
-            dbg_println!("Link Val: {:?}", self.link_vals[i]);
-            self.link_vals[i] * self.link_weights[i]
-        }).sum() * self.b_weight
+        (0..self.link_weights.len())
+            .into_iter()
+            .map(|i| {
+                dbg_println!("Link Val: {:?}", self.link_vals[i]);
+                self.link_vals[i] * self.link_weights[i]
+            })
+            .sum::<f32>()
+            * self.b_weight
     }
 
     pub fn output(&mut self, activation: &ActivationFunction) -> f32 {
-         match *activation {
+        match *activation {
             ActivationFunction::Sigmoid => Node::sigmoid(self.input()),
-
             ActivationFunction::Linear => Node::linear(self.input()),
-
             ActivationFunction::Tanh => Node::tanh(self.input()),
             // ActivationFunction::Step => Node::step(self.input()),
         }
     }
 
-    pub fn compute_answer_err_sig(&mut self, cached_output: f32, activation: &ActivationFunction) -> f32 {
-        let derivative: f32;
-        match activation {
-            ActivationFunction::Sigmoid => {
-                derivative = cached_output * (1.0 - cached_output);
-            }
-            ActivationFunction::Linear => {
-                derivative = 2.0;
-            }
-            ActivationFunction::Tanh => {
-                derivative = 1.0 //- unsafe { std::intrinsics::powf32(y, 2.0) };
-            }
-        }
+    pub fn compute_answer_err_sig(
+        &mut self,
+        cached_output: f32,
+        activation: &ActivationFunction,
+    ) -> f32 {
+        let derivative: f32 = match activation {
+            ActivationFunction::Sigmoid => cached_output * (1.0 - cached_output),
+            ActivationFunction::Linear => 2.0,
+            ActivationFunction::Tanh => 1.0, //- unsafe { std::intrinsics::powf32(y, 2.0) };
+        };
         let err_sig = (self.correct_answer.unwrap() - cached_output) * derivative;
         dbg_println!("Err Signal Post: {:?}", err_sig);
         err_sig
     }
 
-    pub fn compute_answer_err_sig_gen(&mut self, mse: f32, cached_output: str, activation: &ActivationFunction) {
+    pub fn compute_answer_err_sig_gen(
+        &mut self,
+        mse: f32,
+        cached_output: &str,
+        activation: &ActivationFunction,
+    ) -> f32 {
         // This is where the derivative of the activation function goes I think
-        let derivative: f32;
-        match activation {
-            ActivationFunction::Sigmoid => 
-                derivative = cached_output * (1.0 - cached_output),
-            ActivationFunction::Linear => 
-                derivative = 2.0,
-            ActivationFunction::Tanh => 
-                derivative = 1.0 ,//- unsafe { std::intrinsics::powf32(y, 2.0) };
-        }
+        let derivative: f32 = match activation {
+            ActivationFunction::Sigmoid => cached_output * (1.0 - cached_output),
+            ActivationFunction::Linear => 2.0,
+            ActivationFunction::Tanh => 1.0, //- unsafe { std::intrinsics::powf32(y, 2.0) };
+        };
         let err_sig = mse * derivative;
         dbg_println!("Err Signal Post: {:?}", self.err_sig.unwrap());
         err_sig
@@ -84,13 +86,13 @@ impl Node {
             dbg_println!(
                 "\nInitial weights: {:?}\nLink Value: {:?}\nErr: {:?}",
                 self.link_weights[link],
-                self.link_vals[link].unwrap(),
+                self.link_vals[link],
                 self.err_sig
             );
-            let new_weight = self.err_sig * self.link_vals[link].unwrap() * learning_rate;
+            let new_weight = self.err_sig * self.link_vals[link] * learning_rate;
             dbg_println!("Adjusted Weight: {:?}\n", self.link_weights[link]);
             new_weight
-        }).sum()
+        })
     }
 
     fn sigmoid(x: f32) -> f32 {
