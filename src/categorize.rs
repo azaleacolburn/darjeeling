@@ -351,39 +351,20 @@ impl CatNetwork {
         mse: &mut f32,
         line: usize,
     ) -> (Types, Option<f32>) {
-        dbg_println!("answer {}", self.answer.unwrap());
+        dbg_println!("answer {}", self.node_array.len() - 1);
         dbg_println!("largest index {}", self.largest_node());
         dbg_println!("{:?}", self);
-        let brightest_node: &Node = &self.node_array[self.answer.unwrap()][self.largest_node()];
-        let brightness: f32 = brightest_node.cached_output.unwrap();
 
-        if !(epochs.is_none()) {
-            // This won't happen during testing
-            if epochs.unwrap() % 10.0 == 0.0 && epochs.unwrap() != 0.0 {
-                println!("\n-------------------------\n");
-                println!("Epoch: {:?}", epochs);
-                println!(
-                    "Category: {:?} \nBrightness: {:?}",
-                    brightest_node.category.as_ref().unwrap(),
-                    brightness
-                );
-                if DEBUG {
-                    let dimest_node: &Node = &self.node_array[self.answer.unwrap()]
-                        [self.node_array[self.answer.unwrap()].len() - 1 - self.largest_node()];
-                    println!(
-                        "Chosen category: {:?} \nDimest Brightness: {:?}",
-                        dimest_node.category.as_ref().unwrap(),
-                        dimest_node.cached_output.unwrap()
-                    );
-                }
-            }
-        }
+        let answer_layer = self.node_array.last().expect("Network has no layer");
+        let brightest_node: &Node = &answer_layer[self.largest_node()];
+        let brightness: f32 = brightest_node.cached_output.unwrap();
 
         dbg_println!(
             "Category: {:?} \nBrightness: {:?}",
             brightest_node.category.as_ref().unwrap(),
             brightness
         );
+
         if data[line].answer.is_some() {
             if brightest_node
                 .category
@@ -396,16 +377,37 @@ impl CatNetwork {
             }
             *count += 1.0;
         }
-        if epochs.is_some() {
-            (
+
+        match epochs {
+            Some(epochs) => {
+                // This won't happen during testing
+                if *epochs % 10.0 == 0.0 && *epochs != 0.0 {
+                    println!("\n-------------------------\n");
+                    println!("Epoch: {:?}", epochs);
+                    println!(
+                        "Category: {:?} \nBrightness: {:?}",
+                        brightest_node.category.as_ref().unwrap(),
+                        brightness
+                    );
+                    if DEBUG {
+                        let dimest_node: &Node =
+                            &answer_layer[answer_layer.len() - self.largest_node() - 1];
+                        println!(
+                            "Chosen category: {:?} \nDimest Brightness: {:?}",
+                            dimest_node.category.as_ref().unwrap(),
+                            dimest_node.cached_output.unwrap()
+                        );
+                    }
+                }
+                (brightest_node.category.clone().unwrap(), None)
+            }
+            None => (
                 brightest_node.category.clone().unwrap(),
                 Some(CatNetwork::calculate_err_for_generation_model(
                     mse,
                     brightest_node,
                 )),
-            )
-        } else {
-            (brightest_node.category.clone().unwrap(), None)
+            ),
         }
     }
 
