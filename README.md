@@ -1,12 +1,9 @@
 # darjeeling
-[![Latest version](https://img.shields.io/crates/v/darjeeling.svg)](https://crates.io/crates/darjeeling)
-[![Documentation](https://docs.rs/darjeeling/badge.svg)](https://docs.rs/darjeeling)
-![License](https://img.shields.io/crates/l/darjeeling.svg)
+[![Latest version](https://img.shields.io/crates/v/darjeeling.svg?style=for-the-badge)](https://crates.io/crates/darjeeling)
+[![Documentation](https://img.shields.io/docsrs/darjeeling.svg?style=for-the-badge)](https://docs.rs/darjeeling)
+[![License](https://img.shields.io/crates/l/darjeeling.svg?style=for-the-badge)](https://github.com/Ewie21/darjeeling/blob/main/LICENSE)
 
 Machine learning tools for Rust
-
-### Contact
-elocolburn@comcast.net
 
 # Installation
 Add the following dependencies to your `Cargo.toml` file
@@ -147,7 +144,7 @@ Different problems work differently with different learning rates, although I re
 DISCLAIMER: I don't actually recommend using the generative AI feature for interesting results, it's horribly unoptimized, and isn't training very well right now.
 
 This program doesn't have a large enough dataset to get interesting results.
-All it does is just create a network and 
+All it does is just trains a network to verify a proof of concept.
 ```rust
     use darjeeling::{
          generation::NeuralNetwork,
@@ -179,16 +176,17 @@ All it does is just create a network and
 Because that's the WiFi password at the Tea Shop where I do most of my programming.
 
 # Contribution
-If you want to contribute, check to the todo or issues, fork the code, and make a pull request whenever you're ready. I'm more than open to reviewing any code people want to add. I'd be happy to give any assistance to people wanting to contribute, including but not limited to teaching about Machine Learning, Rust, and how Darjeeling works. We welcome all experience levels here. Just email me if you need anything. If there's a bug that you can't/don't want to fix, open an issue.
+If you want to contribute, check the todo or issues list, fork the code, and make a pull request whenever you're ready. I'm more than open to reviewing any code people want to add. I'd be happy to give any assistance to people wanting to contribute, including but not limited to teaching about Machine Learning, Rust, and how Darjeeling works. We welcome all experience levels here. Just email me if you need anything. If there's a bug that you can't/don't want to fix, open an issue. I hope to one day make this a great project to get started with open source on, although there isn't the infrastructure in place right now to make that happen.
+
 ## Guidelines
-- Be respectful of all kinds of people and their differences.
-- Be kind.
-- Be patient to people of all experience and skill levels.
+- Be kind, respectful, and patient.
+
+# [Contact Me](elocolburn@comcast.net)
 
 # TODO:
-- Make generation better(seriously, it doesn't give good results right now)
-- Add Support for [Polars](https://www.pola.rs/) Dataframes
-- Make data manipulation and input formatting easier
-- Optimize
+- [ ] Make generation better (seriously, it doesn't give good results right now)
+- [ ] Add Support for [Polars](https://www.pola.rs/) Dataframes
+- [ ] Make data manipulation and input formatting easier
+- [ ] Optimize a lot
 
-Dataframes and series' are now deprecated
+Darjeelings implementations of Dataframes and Series' are now deprecated

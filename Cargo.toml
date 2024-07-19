@@ -5,6 +5,7 @@ version = "0.3.4"
 description = "Machine learning tools for rust. Currently comprising of categorization and generation neural network model training"
 edition = "2021"
 license = "MIT"
+repository = "https://github.com/Ewie21/darjeeling"
 rust-version = "1.66.0"
 keywords = ["machine-learning", "categorization", "deep-learning", "neural-networks", "generative"]
 exclude = [

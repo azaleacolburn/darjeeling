@@ -15,15 +15,13 @@
 )]
 pub static DEBUG: bool = false;
 
-pub mod input;
-pub mod categorize;
-pub mod node;
-// pub mod dataframe;
-// pub mod series;
-pub mod error;
 pub mod activation;
-pub mod types;
+pub mod categorize;
+pub mod error;
 pub mod generation;
-mod utils;
+pub mod input;
+pub mod node;
 #[cfg(test)]
 pub mod tests;
+pub mod types;
+mod utils;
