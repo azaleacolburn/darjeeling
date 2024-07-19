@@ -50,30 +50,29 @@ impl Node {
         }
     }
 
-    pub fn compute_answer_err_sig(
-        &mut self,
-        cached_output: f32,
-        activation: &ActivationFunction,
-    ) -> f32 {
+    pub fn compute_answer_err_sig(&mut self, activation: ActivationFunction) -> f32 {
+        let output = self
+            .cached_output
+            .expect("Answer Node Missing Cached Output");
+
         let derivative: f32 = match activation {
-            ActivationFunction::Sigmoid => cached_output * (1.0 - cached_output),
+            ActivationFunction::Sigmoid => output * (1.0 - output),
             ActivationFunction::Linear => 2.0,
             ActivationFunction::Tanh => 1.0, //- unsafe { std::intrinsics::powf32(y, 2.0) };
         };
-        self.err_sig = Some((self.correct_answer.unwrap() - cached_output) * derivative);
+
+        self.err_sig = Some((self.correct_answer.unwrap() - output) * derivative);
         dbg_println!("Err Signal Post: {:?}", self.err_sig);
         self.err_sig.unwrap()
     }
 
-    pub fn compute_answer_err_sig_gen(
-        &mut self,
-        mse: f32,
-        cached_output: &str,
-        activation: &ActivationFunction,
-    ) -> f32 {
+    pub fn compute_answer_err_sig_gen(&mut self, mse: f32, activation: ActivationFunction) -> f32 {
         // This is where the derivative of the activation function goes I think
+        let output = self
+            .cached_output
+            .expect("Answer Node Missing Cached Output");
         let derivative: f32 = match activation {
-            ActivationFunction::Sigmoid => cached_output * (1.0 - cached_output),
+            ActivationFunction::Sigmoid => output * (1.0 - output),
             ActivationFunction::Linear => 2.0,
             ActivationFunction::Tanh => 1.0, //- unsafe { std::intrinsics::powf32(y, 2.0) };
         };

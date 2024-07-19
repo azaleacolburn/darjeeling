@@ -420,78 +420,79 @@ impl CatNetwork {
     }
 
     /// Finds the index and the brightest node in an array and returns it
-    fn largest_node(&self) -> usize {
-        let mut largest_node = 0;
-        (0..self.node_array[self.answer.unwrap()].len())
-            .into_iter()
-            .for_each(|node_i| {
-                if self.node_array[self.answer.unwrap()][node_i].cached_output
-                    > self.node_array[self.answer.unwrap()][largest_node].cached_output
-                {
-                    largest_node = node_i;
-                }
-            });
-        largest_node
+    fn largest_node(&self, activation_function: ActivationFunction) -> usize {
+        let mut largest_index = 0;
+        let answer_layer = self.node_array.last().expect("Network has no layers");
+        for (i, node) in answer_layer.iter().enumerate() {
+            if node.cached_output > answer_layer[largest_index].cached_output {
+                largest_index = i;
+            }
+        }
+
+        largest_index
     }
     /// Goes back through the network adjusting the weights of the all the neurons based on their error signal
-    fn backpropogate(&mut self, learning_rate: f32) {
+    fn backpropogate(&mut self, learning_rate: f32, activation_function: ActivationFunction) {
         let hidden_layers = (self.node_array.len() - 2) as i32;
-        for answer in 0..self.node_array[self.answer.unwrap()].len() {
-            dbg_println!("Node: {:?}", self.node_array[self.answer.unwrap()][answer]);
-            self.node_array[self.answer.unwrap()][answer]
-                .compute_answer_err_sig(&self.activation_function);
-            dbg_println!(
-                "Error: {:?}",
-                self.node_array[self.answer.unwrap()][answer]
-                    .err_sig
-                    .unwrap()
-            );
-        }
+
+        self.node_array
+            .last_mut()
+            .expect("Network has no layers")
+            .iter_mut()
+            .for_each(|node| {
+                node.compute_answer_err_sig(activation_function);
+
+                dbg_println!("Answer Node(Post Error Calc): {:?}", node);
+            });
+
         self.adjust_hidden_weights(learning_rate, hidden_layers);
-        // Adjusts weights for answer neurons
-        for answer in 0..self.node_array[self.answer.unwrap()].len() {
-            self.node_array[self.answer.unwrap()][answer].adjust_weights(learning_rate);
-        }
+
+        self.node_array
+            .last_mut()
+            .expect("Network has no layers")
+            .iter_mut()
+            .for_each(|node| node.adjust_weights(learning_rate));
     }
 
     #[allow(non_snake_case)]
     /// Adjusts the weights of all the hidden neurons in a network
-    fn adjust_hidden_weights(&mut self, learning_rate: f32, hidden_layers: i32) {
-        // HIDDEN represents the layer, while hidden represents the node of the layer
-        for HIDDEN in 1..(hidden_layers + 1) as usize {
-            for hidden in 0..self.node_array[HIDDEN].len() {
-                self.node_array[HIDDEN][hidden].err_sig = Some(0.0);
-                for next_layer in 0..self.node_array[HIDDEN + 1].len() {
-                    let next_weight = self.node_array[HIDDEN + 1][next_layer].link_weights[hidden];
-                    self.node_array[HIDDEN + 1][next_layer].err_sig =
-                        match self.node_array[HIDDEN + 1][next_layer].err_sig.is_none() {
-                            true => Some(0.0),
-                            false => self.node_array[HIDDEN + 1][next_layer].err_sig,
-                        };
-                    // This changes based on the activation function
-                    self.node_array[HIDDEN][hidden].err_sig = Some(
-                        self.node_array[HIDDEN][hidden].err_sig.unwrap()
-                            + (self.node_array[HIDDEN + 1][next_layer].err_sig.unwrap()
-                                * next_weight),
-                    );
+    fn adjust_hidden_weights(&mut self, learning_rate: f32, hidden_layers: usize) {
+        for layer in 1..=hidden_layers {
+            for node in 0..self.node_array[layer].len() {
+                self.node_array[layer][node].err_sig = Some(0.0);
+                // Link weights, err sigs
+                let next_layer: Box<[(f32, f32)]> = self.node_array[layer + 1]
+                    .iter()
+                    .map(|next_node| {
+                        (
+                            next_node.link_weights[node],
+                            next_node.err_sig.unwrap_or(0.00),
+                        )
+                    })
+                    .collect::<Box<[(f32, f32)]>>();
 
-                    dbg_println!(
-                        "next err sig {:?}",
-                        self.node_array[HIDDEN + 1][next_layer].err_sig.unwrap()
-                    );
+                next_layer.iter_mut().for_each(|(next_weight, err_sig)| {
+                    // This changes based on the activation function
+                    self.node_array[layer][node].err_sig =
+                        Some(*err_sig + (*err_sig * *next_weight));
+
+                    dbg_println!("next err sig {:?}", err_sig);
                     dbg_println!("next weight {:?}", next_weight);
-                }
-                let hidden_result = self.node_array[HIDDEN][hidden].cached_output.unwrap();
-                let multiplied_value = self.node_array[HIDDEN][hidden].err_sig.unwrap()
+                });
+
+                let hidden_result = self.node_array[layer][node].cached_output.unwrap();
+                let multiplied_value = self.node_array[layer][node].err_sig.unwrap()
                     * (hidden_result)
                     * (1.0 - hidden_result);
-                dbg_println!("new hidden errsig multiply: {:?}", multiplied_value);
-                self.node_array[HIDDEN][hidden].err_sig = Some(multiplied_value);
 
-                dbg_println!("\nLayer: {:?}", HIDDEN);
-                dbg_println!("Node: {:?}", hidden);
+                dbg_println!("New hidden errsig multiply: {:?}", multiplied_value);
 
-                self.node_array[HIDDEN][hidden].adjust_weights(learning_rate);
+                self.node_array[layer][node].err_sig = Some(multiplied_value);
+
+                dbg_println!("\nLayer: {:?}", layer);
+                dbg_println!("Node: {:?}", node);
+
+                self.node_array[layer][node].adjust_weights(learning_rate);
             }
         }
     }
