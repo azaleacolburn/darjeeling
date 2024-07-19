@@ -15,10 +15,10 @@ use std::{
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CatNetwork {
     node_array: Box<[Box<[Node]>]>,
+    activation_function: Option<ActivationFunction>
 }
 
 #[warn(clippy::unwrap_in_result)]
-
 impl CatNetwork {
     /// Constructor function for a categorization neural network
     /// Fills a Neural Network's node_array with empty nodes.
@@ -82,6 +82,7 @@ impl CatNetwork {
 
         CatNetwork {
             node_array: node_array.into_boxed_slice(),
+            activation_function: None
         }
     }
 
@@ -152,6 +153,12 @@ impl CatNetwork {
         target_err_percent: f32,
         write: bool,
     ) -> Result<(Option<String>, f32, f32), DarjeelingError> {
+
+        let activation_function = match self.activation_function {
+            Some(s) => s,
+            None => return Darjeel
+        }
+
         let mut epochs = 0.0;
         let mut sum = 0.0;
         let mut count = 0.0;
@@ -237,10 +244,10 @@ impl CatNetwork {
             }
         };
 
-        for node in 0..net.node_array[net.answer.unwrap()].len() {
-            net.node_array[net.answer.unwrap()][node].category = Some(categories[node].clone());
-            dbg_println!("{:?}", net.node_array[net.answer.unwrap()][node].category);
-        }
+        net.node_array.last().iter().enumerate().for_each(|(i, node)| {
+            node.category = Some(categories[i].clone());
+            dbg_println!("{:?}", node.category);
+        });
 
         for line in 0..data.len() {
             dbg_println!("Testing Checkpoint One Passed");
@@ -251,12 +258,9 @@ impl CatNetwork {
             net.push_downstream(&mut data, line);
             dbg_println!("Sum: {:?} Count: {:?}", sum, count);
             answers.push(
-                (Some(
                     net.self_analysis(&mut None, &mut sum, &mut count, &mut data, &mut mse, line)
-                        .0,
-                ))
+                        .0
                 .clone()
-                .expect("Wrapped in Some()"),
             );
 
             dbg_println!("Sum: {:?} Count: {:?}", sum, count);
@@ -305,7 +309,7 @@ impl CatNetwork {
         &mut self,
         data: &mut Vec<Input>,
         line: usize,
-        activation_function: ActivationFunction,
+        activation_function: ActivationFunction
     ) {
         // Pass data to the input layer
         if let Some(input_layer) = self.node_array.first_mut() {
@@ -335,8 +339,8 @@ impl CatNetwork {
                         node.link_vals[prev_node_i] = *prev_output;
                     });
 
-                node.output(&activation_function);
-            })
+                node.output(activation_function);
+            });
         }
     }
 
@@ -347,7 +351,7 @@ impl CatNetwork {
         epochs: &mut Option<f32>,
         sum: &'b mut f32,
         count: &'b mut f32,
-        data: &mut Vec<Input>,
+        data: Vec<Input>,
         mse: &mut f32,
         line: usize,
     ) -> (Types, Option<f32>) {
@@ -381,23 +385,24 @@ impl CatNetwork {
         match epochs {
             Some(epochs) => {
                 // This won't happen during testing
-                if *epochs % 10.0 == 0.0 && *epochs != 0.0 {
-                    println!("\n-------------------------\n");
-                    println!("Epoch: {:?}", epochs);
+                if *epochs % 10.0 != 0.0 || *epochs == 0.0 {
+                    return (brightest_node.category.clone().unwrap(), None);
+                }
+                println!("\n-------------------------\n");
+                println!("Epoch: {:?}", epochs);
+                println!(
+                    "Category: {:?} \nBrightness: {:?}",
+                    brightest_node.category.as_ref().unwrap(),
+                    brightness
+                );
+                if DEBUG {
+                    let dimest_node: &Node =
+                        &answer_layer[answer_layer.len() - self.largest_node() - 1];
                     println!(
-                        "Category: {:?} \nBrightness: {:?}",
-                        brightest_node.category.as_ref().unwrap(),
-                        brightness
+                        "Chosen category: {:?} \nDimest Brightness: {:?}",
+                        dimest_node.category.as_ref().unwrap(),
+                        dimest_node.cached_output.unwrap()
                     );
-                    if DEBUG {
-                        let dimest_node: &Node =
-                            &answer_layer[answer_layer.len() - self.largest_node() - 1];
-                        println!(
-                            "Chosen category: {:?} \nDimest Brightness: {:?}",
-                            dimest_node.category.as_ref().unwrap(),
-                            dimest_node.cached_output.unwrap()
-                        );
-                    }
                 }
                 (brightest_node.category.clone().unwrap(), None)
             }
@@ -420,7 +425,7 @@ impl CatNetwork {
     }
 
     /// Finds the index and the brightest node in an array and returns it
-    fn largest_node(&self, activation_function: ActivationFunction) -> usize {
+    fn largest_node(&self) -> usize {
         let mut largest_index = 0;
         let answer_layer = self.node_array.last().expect("Network has no layers");
         for (i, node) in answer_layer.iter().enumerate() {
@@ -433,7 +438,7 @@ impl CatNetwork {
     }
     /// Goes back through the network adjusting the weights of the all the neurons based on their error signal
     fn backpropogate(&mut self, learning_rate: f32, activation_function: ActivationFunction) {
-        let hidden_layers = (self.node_array.len() - 2) as i32;
+        let hidden_layers = self.node_array.len() - 2;
 
         self.node_array
             .last_mut()
@@ -461,7 +466,7 @@ impl CatNetwork {
             for node in 0..self.node_array[layer].len() {
                 self.node_array[layer][node].err_sig = Some(0.0);
                 // Link weights, err sigs
-                let next_layer: Box<[(f32, f32)]> = self.node_array[layer + 1]
+                let mut next_layer: Box<[(f32, f32)]> = self.node_array[layer + 1]
                     .iter()
                     .map(|next_node| {
                         (
@@ -509,56 +514,13 @@ impl CatNetwork {
     /// Wraps error
     ///  
     pub fn write_model(&mut self, name: &str) -> Result<String, DarjeelingError> {
-        let mut rng = rand::thread_rng();
-        let file_num: u32 = rng.gen();
-        let model_name: String = format!("model_{}_{}.darj", name, file_num);
-
-        match Path::new(&model_name).try_exists() {
-            Ok(false) => {
-                let _file: fs::File = fs::File::create(&model_name).unwrap();
-                let mut serialized = "".to_string();
-                println!("write, length: {}", self.node_array.len());
-                for i in 0..self.node_array.len() {
-                    if i != 0 {
-                        let _ = serialized.push_str("lb\n");
-                    }
-                    for j in 0..self.node_array[i].len() {
-                        for k in 0..self.node_array[i][j].link_weights.len() {
-                            print!("{}", self.node_array[i][j].link_weights[k]);
-                            if k == self.node_array[i][j].link_weights.len() - 1 {
-                                let _ = serialized.push_str(
-                                    format!("{}", self.node_array[i][j].link_weights[k]).as_str(),
-                                );
-                            } else {
-                                let _ = serialized.push_str(
-                                    format!("{},", self.node_array[i][j].link_weights[k]).as_str(),
-                                );
-                            }
-                        }
-                        let _ = serialized.push_str(
-                            format!(";{}", self.node_array[i][j].b_weight.unwrap().to_string())
-                                .as_str(),
-                        );
-                        let _ = serialized.push_str("\n");
-                    }
-                }
-                serialized.push_str("lb\n");
-                serialized.push_str(format!("{}", self.activation_function).as_str());
-                println!("Serialized: {:?}", serialized);
-                println!("{}", model_name);
-                match fs::write(&model_name, serialized) {
-                    Ok(()) => {
-                        println!("Model {:?} Saved", file_num);
-                        Ok(model_name)
-                    }
-                    Err(_error) => Err(DarjeelingError::WriteModelFailed(model_name)),
-                }
+        match self.serialize() {
+            Ok(_) => {
+                println!("Model: {name} Saved");
             }
-            Ok(true) => self.write_model(name),
-            Err(error) => Err(DarjeelingError::UnknownError(error.to_string())),
+            Err(err) => {}
         }
     }
-
     /// Reads a serizalized Neural Network
     ///
     /// ## Params

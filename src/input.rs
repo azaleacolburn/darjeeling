@@ -1,21 +1,20 @@
-use std::fmt::Display;
 use crate::types::Types;
+use std::fmt::Display;
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 /// Represents the input for the neural network
 pub struct Input {
     pub inputs: Vec<f32>,
-    pub answer: Option<Types>
+    pub answer: Option<Types>,
 }
 
-impl Input  {
-
+impl Input {
     /// Creates new input
     /// # Params
     /// - Inputs: A list of 32-bit floating point numbers.
     /// - Answer: A string, representing the correct answer(or cateogry) of this input.
-    /// 
+    ///
     /// # Examples
     /// This example is for one input into an XOR gate
     /// ```
@@ -26,8 +25,7 @@ impl Input  {
     /// let formated_input: Input = Input::new(inputs, Some(answer));
     /// ```
     pub fn new(inputs: Vec<f32>, answer: Option<Types>) -> Input {
-
-        Input { inputs, answer}
+        Input { inputs, answer }
     }
 
     // TODO: Write format_as_input function

@@ -1,15 +1,18 @@
 use core::panic;
-use std::{io::{BufReader, BufRead}, fs};
+use std::{
+    fs,
+    io::{BufRead, BufReader},
+};
 
 use crate::{
-    input::Input, 
-    DEBUG, 
-    categorize::CatNetwork, 
+    activation::ActivationFunction,
+    categorize::CatNetwork,
+    generation::GenNetwork,
+    input::Input,
     // dataframe::DataFrame,
-    // series::Series, 
-    types::{Types},
-    activation::ActivationFunction, 
-    generation::GenNetwork
+    // series::Series,
+    types::Types,
+    DEBUG,
 };
 
 // #[test]
@@ -27,24 +30,35 @@ pub fn train_test_xor() {
     let mut data: Vec<Input> = xor_file();
 
     // Panics if unwraps a None value
-    let model_name: String = train_network_xor(data.clone(), categories.clone(), learning_rate).unwrap();
+    let model_name: String =
+        train_network_xor(data.clone(), categories.clone(), learning_rate).unwrap();
     data.iter_mut().for_each(|input| {
         input.answer = None;
     });
     CatNetwork::test(data, categories, model_name).unwrap();
-} 
+}
 
 /// Returns None if the learn function returns an Err variant
-fn train_network_xor(mut data: Vec<Input>, categories: Vec<Types>, learning_rate: f32) -> Option<String> {
+fn train_network_xor(
+    mut data: Vec<Input>,
+    categories: Vec<Types>,
+    learning_rate: f32,
+) -> Option<String> {
     let input_num = 2;
     let hidden_num = 2;
     let answer_num = 2;
     let hidden_layers = 1;
-    let mut net = CatNetwork::new(input_num, hidden_num, answer_num, hidden_layers, ActivationFunction::Sigmoid);
+    let mut net = CatNetwork::new(
+        input_num,
+        hidden_num,
+        answer_num,
+        hidden_layers,
+        ActivationFunction::Sigmoid,
+    );
 
     match net.learn(&mut data, categories, learning_rate, "xor", 99.0, true) {
         Ok((model_name, _err_percent, _mse)) => Some(model_name.expect("write is true")),
-        Err(_err) => None
+        Err(_err) => None,
     }
 }
 
@@ -52,27 +66,34 @@ fn train_network_xor(mut data: Vec<Input>, categories: Vec<Types>, learning_rate
 pub fn xor_file<'a>() -> Vec<Input> {
     let file = match fs::File::open("training_data/xor.txt") {
         Ok(file) => file,
-        Err(error) => panic!("Panic opening the file: {:?}", error)
+        Err(error) => panic!("Panic opening the file: {:?}", error),
     };
 
     let reader = BufReader::new(file);
     let mut inputs: Vec<Input> = vec![];
 
     for l in reader.lines() {
-
         let line: String = match l {
             Ok(line) => line,
-            Err(error) => panic!("{:?}", error)
+            Err(error) => panic!("{:?}", error),
         };
 
         let init_inputs: Vec<&str> = line.split(";").collect();
         // Confused about how this is supposed to work
-        let float_inputs: Vec<f32> = vec![init_inputs[0].split(" ").collect::<Vec<&str>>()[0].parse().unwrap(), init_inputs[0].split(" ").collect::<Vec<&str>>()[1].parse().unwrap()];
-        let answer_inputs: Types = Types::Float((init_inputs[init_inputs.len()-1]).parse().unwrap());// TODO: Figure out what should be the row's answer; the last of a line for     
+        let float_inputs: Vec<f32> = vec![
+            init_inputs[0].split(" ").collect::<Vec<&str>>()[0]
+                .parse()
+                .unwrap(),
+            init_inputs[0].split(" ").collect::<Vec<&str>>()[1]
+                .parse()
+                .unwrap(),
+        ];
+        let answer_inputs: Types =
+            Types::Float((init_inputs[init_inputs.len() - 1]).parse().unwrap()); // TODO: Figure out what should be the row's answer; the last of a line for
         let input: Input = Input::new(float_inputs, Some(answer_inputs));
         inputs.push(input);
     }
-    inputs  
+    inputs
 }
 
 // TODO: Wite predictive model training first
@@ -84,57 +105,70 @@ pub fn xor_file<'a>() -> Vec<Input> {
 
 #[test]
 fn train_test_digits() {
-    let learning_rate:f32 = 0.05;
-    let categories: Vec<Types> = categories_str_format(vec!["0","1","2","3","4","5","6","7","8","9"]);
+    let learning_rate: f32 = 0.05;
+    let categories: Vec<Types> =
+        categories_str_format(vec!["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]);
     let data: Vec<Input> = digits_file();
 
-    let model_name: String = train_network_digits(data.clone(), categories.clone(), learning_rate).unwrap();
+    let model_name: String =
+        train_network_digits(data.clone(), categories.clone(), learning_rate).unwrap();
 
     CatNetwork::test(data, categories, model_name).unwrap();
 }
 
 /// # Panics
 /// If the learn function returns an Err
-fn train_network_digits(mut data: Vec<Input>, categories: Vec<Types>, learning_rate: f32) -> Option<String> {
+fn train_network_digits(
+    mut data: Vec<Input>,
+    categories: Vec<Types>,
+    learning_rate: f32,
+) -> Option<String> {
     let mut net = CatNetwork::new(64, 128, 10, 1, ActivationFunction::Sigmoid);
 
     match net.learn(&mut data, categories, learning_rate, "digits", 99.0, true) {
-
         Ok((model_name, _err_percent, _mse)) => Some(model_name.expect("write is true")),
 
-        Err(error) => panic!("{:?}", error)
+        Err(error) => panic!("{:?}", error),
     }
 }
 
 fn digits_file() -> Vec<Input> {
     let file = match fs::File::open("training_data/train-digits.txt") {
         Ok(file) => file,
-        Err(error) => panic!("Panic opening the file: {:?}", error)
+        Err(error) => panic!("Panic opening the file: {:?}", error),
     };
 
     let reader = BufReader::new(file);
     let mut inputs: Vec<Input> = vec![];
 
     for l in reader.lines() {
-
         let line = match l {
-
             Ok(line) => line,
-            Err(error) => panic!("{:?}", error)
+            Err(error) => panic!("{:?}", error),
         };
 
         let init_inputs: Vec<&str> = line.split(",").collect();
         let mut float_inputs: Vec<f32> = vec![];
 
-        for i in 0..init_inputs.len()-1 {
+        for i in 0..init_inputs.len() - 1 {
             float_inputs.push(init_inputs[i].parse().unwrap());
         }
-        let input: Input = Input::new(float_inputs, Some(Types::String(init_inputs[init_inputs.len()-1].to_string())));
-        if DEBUG { println!("Correct Answer: {:?}", init_inputs[init_inputs.len()-1].to_string()); }
+        let input: Input = Input::new(
+            float_inputs,
+            Some(Types::String(
+                init_inputs[init_inputs.len() - 1].to_string(),
+            )),
+        );
+        if DEBUG {
+            println!(
+                "Correct Answer: {:?}",
+                init_inputs[init_inputs.len() - 1].to_string()
+            );
+        }
         inputs.push(input);
     }
 
-    inputs 
+    inputs
 }
 
 #[test]
@@ -152,25 +186,34 @@ fn train_test_gen() {
 fn train_gen() -> String {
     let mut inputs = gen_data_file();
     let mut net = GenNetwork::new(8, 8, 8, 1, ActivationFunction::Sigmoid);
-    net.learn(&mut inputs, 1.0, "dummy_gen", 100, 0.5, 8, 1, ActivationFunction::Sigmoid, 99.0).unwrap()
+    net.learn(
+        &mut inputs,
+        1.0,
+        "dummy_gen",
+        100,
+        0.5,
+        8,
+        1,
+        ActivationFunction::Sigmoid,
+        99.0,
+    )
+    .unwrap()
 }
 
 /// Read the file you want to and format it as Inputs
 pub fn gen_data_file<'a>() -> Vec<Input> {
     let file = match fs::File::open("training_data/train-digits.txt") {
         Ok(file) => file,
-        Err(error) => panic!("Panic opening the file: {:?}", error)
+        Err(error) => panic!("Panic opening the file: {:?}", error),
     };
 
     let reader = BufReader::new(file);
     let mut inputs: Vec<Input> = vec![];
 
     for l in reader.lines() {
-
         let line: String = match l {
-
             Ok(line) => line,
-            Err(error) => panic!("{:?}", error)
+            Err(error) => panic!("{:?}", error),
         };
 
         let init_inputs: Vec<&str> = line.split(",").collect();
@@ -181,7 +224,7 @@ pub fn gen_data_file<'a>() -> Vec<Input> {
         let input = Input::new(float_inputs, None);
         inputs.push(input);
     }
-    inputs  
+    inputs
 }
 
 #[test]
@@ -198,7 +241,7 @@ pub fn test_add_hidden_layers() {
 /// # Params
 /// - Categories Strings: A list of string literals, one for each answer option(category)
 pub fn categories_str_format(categories_str: Vec<&str>) -> Vec<Types> {
-    let mut categories:Vec<Types> = vec![];
+    let mut categories: Vec<Types> = vec![];
     for category in categories_str {
         categories.push(Types::String(category.to_string()));
     }
@@ -207,7 +250,7 @@ pub fn categories_str_format(categories_str: Vec<&str>) -> Vec<Types> {
 }
 
 pub fn categories_float_format(categories_str: Vec<f32>) -> Vec<Types> {
-    let mut categories:Vec<Types> = vec![];
+    let mut categories: Vec<Types> = vec![];
     for category in categories_str {
         categories.push(Types::Float(category));
     }
@@ -220,14 +263,14 @@ pub fn categories_float_format(categories_str: Vec<f32>) -> Vec<Types> {
 //     let mut frame: DataFrame<'a> = quick_frame();
 //     frame.display();
 //     frame.add_row(
-//         "Label!", 
+//         "Label!",
 //         types::fmt_int_type_vec(vec![10, 11, 12]),
-//     ).unwrap(); 
+//     ).unwrap();
 //     frame.display();
 //     println!("{:?}\n", frame.index_at_labels("Label!", "col1"));
 //     frame.delete_row("Label!");
 //     let _ = frame.add_col(
-//         "col3", 
+//         "col3",
 //         types::fmt_str_type_vec(vec!["hellow", "fun", "life"])
 //     );
 //     frame.display();

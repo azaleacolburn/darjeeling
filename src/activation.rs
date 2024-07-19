@@ -1,5 +1,5 @@
 use core::fmt;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub enum ActivationFunction {
@@ -17,9 +17,7 @@ impl fmt::Display for ActivationFunction {
             ActivationFunction::Linear => write!(f, "linear"),
 
             ActivationFunction::Tanh => write!(f, "tanh"),
-
             // ActivationFunction::Step => write!(f, "step"),
-
         }
     }
 }

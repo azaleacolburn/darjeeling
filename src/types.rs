@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum Types {
@@ -9,15 +9,13 @@ pub enum Types {
 }
 
 impl Types {
-    
     pub fn display(&self) {
-        match self {  
+        match self {
             Types::String(string) => print!("{}", string),
             Types::Integer(int) => print!("{}", int),
             Types::Float(float) => print!("{}", float),
             Types::Boolean(boolean) => print!("{}", boolean),
         };
-
     }
 }
 
@@ -28,7 +26,7 @@ impl Default for Types {
 }
 
 // Attempts to create generic type enum vector conversion
-// pub fn fmt_type_vec<T: 'static>(list: Vec<T>) -> Result<Vec<Types<'static>>, DarjeelingError<'static>> 
+// pub fn fmt_type_vec<T: 'static>(list: Vec<T>) -> Result<Vec<Types<'static>>, DarjeelingError<'static>>
 // where
 //     &'static str: From<T>, i32: From<T>, f32: From<T>, bool: From<T>, T: Clone, T: Default {
 
@@ -66,10 +64,10 @@ impl Default for Types {
 //         Ok(fmted_list)
 // }
 
-// pub fn fmt_type_vec<T>(list: Vec<T>) -> Result<Vec<Types<'static>>, DarjeelingError<'static>> 
-// where 
+// pub fn fmt_type_vec<T>(list: Vec<T>) -> Result<Vec<Types<'static>>, DarjeelingError<'static>>
+// where
 //     T: Default + Clone {
-    
+
 //     let t: TypeId = TypeId::of::<T>();
 //     let s: TypeId = TypeId::of::<&str>();
 //     let i: TypeId = TypeId::of::<i32>();

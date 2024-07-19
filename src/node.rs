@@ -6,10 +6,14 @@ use serde::{Deserialize, Serialize};
 pub struct Node {
     pub link_weights: Box<[f32]>,
     pub link_vals: Box<[f32]>,
-    pub err_sig: Option<f32>,
-    pub correct_answer: Option<f32>,
-    pub category: Option<Types>,
     pub b_weight: f32,
+    #[serde(skip_serializing)]
+    pub err_sig: Option<f32>,
+    #[serde(skip_serializing)]
+    pub correct_answer: Option<f32>,
+    #[serde(skip_serializing)]
+    pub category: Option<Types>,
+    #[serde(skip_serializing)]
     pub cached_output: Option<f32>,
 }
 
