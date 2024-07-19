@@ -144,13 +144,13 @@ impl CatNetwork {
     /// ```
     pub fn learn<'b>(
         &'b mut self,
-        data: &mut Vec<Input>,
-        categories: Vec<Types>,
+        data: &Vec<Input>,
+        categories: Box<[Types]>,
         learning_rate: f32,
+        activation_function: ActivationFunction,
         name: &str,
         target_err_percent: f32,
         write: bool,
-        activation_function: ActivationFunction,
     ) -> Result<(Option<String>, f32, f32), DarjeelingError> {
         let mut epochs = 0.0;
         let mut sum = 0.0;
@@ -158,7 +158,7 @@ impl CatNetwork {
         let mut err_percent = 0.0;
         let mut mse = 0.0;
 
-        println!("Categrize");
+        println!("Categorize");
         bench!(self.categorize(categories));
 
         while err_percent < target_err_percent {
@@ -276,63 +276,68 @@ impl CatNetwork {
     }
 
     /// Assigns categories to answer nodes based on a list of given categories
-    fn categorize(&mut self, categories: Vec<Types>) {
-        let mut count: usize = 0;
-        self.node_array[self.answer.unwrap()]
+    fn categorize(&mut self, categories: Box<[Types]>) {
+        self.node_array
+            .last_mut()
+            .expect("Network has no answer layer")
             .iter_mut()
-            .for_each(|node| {
-                node.category = Some(categories[count].clone());
-                count += 1;
-            });
+            .enumerate()
+            .for_each(|(i, node)| node.category = Some(categories[i].clone()));
     }
 
     fn assign_answers(&mut self, input: &mut Input) {
-        let _ = self.node_array[self.answer.unwrap()]
+        self.node_array
+            .last_mut()
+            .expect("Network has no answer layer")
             .iter_mut()
             .for_each(|node| {
-                // println!("{:?}", input);
-                if node.category.as_ref().unwrap() == input.answer.as_ref().unwrap() {
-                    node.correct_answer = Some(1.0);
-                } else {
-                    node.correct_answer = Some(0.0);
-                }
+                node.correct_answer =
+                    if node.category.as_ref().unwrap() == input.answer.as_ref().unwrap() {
+                        Some(1.0)
+                    } else {
+                        Some(0.0)
+                    }
             });
     }
 
     /// Passes in data to the sensors, pushs data 'downstream' through the network
-    fn push_downstream(&mut self, data: &mut Vec<Input>, line: usize) {
-        // Passes in data for input layer
-        (0..self.node_array[0].len()).into_iter().for_each(|i| {
-            let input: f32 = data[line].inputs[i];
-            self.node_array[0][i].cached_output = Some(input);
-        });
+    fn push_downstream(
+        &mut self,
+        data: &mut Vec<Input>,
+        line: usize,
+        activation_function: ActivationFunction,
+    ) {
+        // Pass data to the input layer
+        if let Some(input_layer) = self.node_array.first_mut() {
+            input_layer.iter_mut().enumerate().for_each(|(i, node)| {
+                node.cached_output = Some(data[line].inputs[i]);
+            });
+        }
 
-        // Feed-forward values for hidden and output layers
-        (1..self.node_array.len()).into_iter().for_each(|layer_i| {
-            (0..self.node_array[layer_i].len())
-                .into_iter()
-                .for_each(|node_i| {
-                    (0..self.node_array[layer_i - 1].len())
-                        .into_iter()
-                        .for_each(|prev_node_i| {
-                            // self.node_array[layer][node].link_vals.push(self.node_array[layer-1][prev_node].cached_output.unwrap());
-                            self.node_array[layer_i][node_i].link_vals[prev_node_i] = Some(
-                                self.node_array[layer_i - 1][prev_node_i]
-                                    .cached_output
-                                    .unwrap(),
-                            );
-                            // I think this line needs to be un-commented
-                            self.node_array[layer_i][node_i].output(&self.activation_function);
-                            if layer_i == self.answer.unwrap() {
-                                dbg_println!(
-                                    "Ran output on answer {:?}",
-                                    self.node_array[layer_i][node_i].cached_output
-                                );
-                            }
-                        });
-                    self.node_array[layer_i][node_i].output(&self.activation_function);
-                });
-        });
+        // Push forward hidden and output layers
+        for layer_i in 1..self.node_array.len() {
+            // Clone the cached outputs from the previous layer
+            let prev_cached_outputs: Box<[f32]> = self.node_array[layer_i - 1]
+                .iter()
+                .map(|node| {
+                    node.cached_output
+                        .expect("Previous nodes do not have cached outputs")
+                })
+                .collect();
+
+            let layer = self.node_array[layer_i].iter_mut();
+
+            layer.for_each(|node| {
+                prev_cached_outputs
+                    .iter()
+                    .enumerate()
+                    .for_each(|(prev_node_i, prev_output)| {
+                        node.link_vals[prev_node_i] = *prev_output;
+                    });
+
+                node.output(&activation_function);
+            })
+        }
     }
 
     /// Analyses the chosen answer node's result.

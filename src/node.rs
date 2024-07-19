@@ -10,6 +10,7 @@ pub struct Node {
     pub correct_answer: Option<f32>,
     pub category: Option<Types>,
     pub b_weight: f32,
+    pub cached_output: Option<f32>,
 }
 
 impl Node {
@@ -21,10 +22,11 @@ impl Node {
         Node {
             link_weights,
             link_vals,
+            b_weight,
             err_sig: None,
+            cached_output: None,
             correct_answer: None,
             category: None,
-            b_weight,
         }
     }
 
@@ -58,9 +60,9 @@ impl Node {
             ActivationFunction::Linear => 2.0,
             ActivationFunction::Tanh => 1.0, //- unsafe { std::intrinsics::powf32(y, 2.0) };
         };
-        let err_sig = (self.correct_answer.unwrap() - cached_output) * derivative;
-        dbg_println!("Err Signal Post: {:?}", err_sig);
-        err_sig
+        self.err_sig = Some((self.correct_answer.unwrap() - cached_output) * derivative);
+        dbg_println!("Err Signal Post: {:?}", self.err_sig);
+        self.err_sig.unwrap()
     }
 
     pub fn compute_answer_err_sig_gen(
@@ -75,24 +77,27 @@ impl Node {
             ActivationFunction::Linear => 2.0,
             ActivationFunction::Tanh => 1.0, //- unsafe { std::intrinsics::powf32(y, 2.0) };
         };
-        let err_sig = mse * derivative;
+        self.err_sig = Some(mse * derivative);
         dbg_println!("Err Signal Post: {:?}", self.err_sig.unwrap());
-        err_sig
+        self.err_sig.unwrap()
     }
 
     pub fn adjust_weights(&mut self, learning_rate: f32) {
         self.b_weight = self.b_weight + self.err_sig.unwrap() * learning_rate;
-        self.link_weights = (0..self.link_weights.len()).into_iter().map(|link| {
-            dbg_println!(
-                "\nInitial weights: {:?}\nLink Value: {:?}\nErr: {:?}",
-                self.link_weights[link],
-                self.link_vals[link],
-                self.err_sig
-            );
-            let new_weight = self.err_sig * self.link_vals[link] * learning_rate;
-            dbg_println!("Adjusted Weight: {:?}\n", self.link_weights[link]);
-            new_weight
-        })
+        self.link_weights = (0..self.link_weights.len())
+            .into_iter()
+            .map(|link| {
+                dbg_println!(
+                    "\nInitial weights: {:?}\nLink Value: {:?}\nErr: {:?}",
+                    self.link_weights[link],
+                    self.link_vals[link],
+                    self.err_sig
+                );
+                let new_weight: f32 = self.err_sig.unwrap() * self.link_vals[link] * learning_rate;
+                dbg_println!("Adjusted Weight: {:?}\n", self.link_weights[link]);
+                new_weight
+            })
+            .collect::<Box<[f32]>>()
     }
 
     fn sigmoid(x: f32) -> f32 {
