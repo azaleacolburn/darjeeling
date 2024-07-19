@@ -1,6 +1,6 @@
 use crate::{
     activation::ActivationFunction, bench, dbg_println, error::DarjeelingError, input::Input,
-    node::Node, types::Types, DEBUG,
+    node::Node, types::Types, utils::RandomIter, DEBUG,
 };
 use rand::{seq::SliceRandom, thread_rng, Rng};
 use rayon::prelude::*;
@@ -15,10 +15,9 @@ use std::{
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CatNetwork {
     node_array: Box<[Box<[Node]>]>,
-    activation_function: Option<ActivationFunction>
+    activation_function: Option<ActivationFunction>,
 }
 
-#[warn(clippy::unwrap_in_result)]
 impl CatNetwork {
     /// Constructor function for a categorization neural network
     /// Fills a Neural Network's node_array with empty nodes.
@@ -82,7 +81,7 @@ impl CatNetwork {
 
         CatNetwork {
             node_array: node_array.into_boxed_slice(),
-            activation_function: None
+            activation_function: None,
         }
     }
 
@@ -141,23 +140,21 @@ impl CatNetwork {
     /// let mut data: Vec<Input> = xor_file();
     /// let mut net = CatNetwork::new(2, 2, 2, 1, ActivationFunction::Sigmoid);
     /// let learning_rate = 1.0;
-    /// let (model_name, error_percentage, mse) = net.learn(&mut data, categories, learning_rate, "xor", 99.0, true).unwrap();
+    /// let (model_name, error_percentage, mse) = net.train(&data, categories, learning_rate, "xor", 99.0, true).unwrap();
     /// ```
-    pub fn learn<'b>(
+    pub fn train<'b>(
         &'b mut self,
-        data: &Vec<Input>,
+        data: &Box<[Input]>,
         categories: Box<[Types]>,
         learning_rate: f32,
-        activation_function: ActivationFunction,
         name: &str,
         target_err_percent: f32,
         write: bool,
     ) -> Result<(Option<String>, f32, f32), DarjeelingError> {
-
         let activation_function = match self.activation_function {
             Some(s) => s,
-            None => return Darjeel
-        }
+            None => return Err(DarjeelingError::SaveModelFailed),
+        };
 
         let mut epochs = 0.0;
         let mut sum = 0.0;
@@ -171,16 +168,16 @@ impl CatNetwork {
         while err_percent < target_err_percent {
             count = 0.0;
             sum = 0.0;
-            data.shuffle(&mut thread_rng());
 
-            for line in 0..data.len() {
+            let data_iter = RandomIter::new(data);
+            for series in data_iter {
                 dbg_println!("Training Checkpoint One Passed");
 
                 println!("Assign");
-                bench!(self.assign_answers(&mut data[line]));
+                bench!(self.assign_answers(series));
 
                 println!("Push");
-                bench!(self.push_downstream(data, line));
+                bench!(self.push_downstream(series, activation_function));
 
                 dbg_println!("Sum: {:?} Count: {:?}", sum, count);
 
@@ -189,15 +186,14 @@ impl CatNetwork {
                     &mut Some(epochs),
                     &mut sum,
                     &mut count,
-                    data,
+                    series,
                     &mut mse,
-                    line
                 ));
 
                 dbg_println!("Sum: {:?} Count: {:?}", sum, count);
 
                 println!("Backpropogate");
-                bench!(self.backpropogate(learning_rate));
+                bench!(self.backpropogate(learning_rate, activation_function));
             }
 
             // let _old_err_percent = err_percent;
@@ -224,8 +220,8 @@ impl CatNetwork {
 
     /// Tests a pretrained model
     pub fn test(
-        mut data: Vec<Input>,
-        categories: Vec<Types>,
+        data: &Box<[Input]>,
+        categories: Box<[Types]>,
         model_name: String,
     ) -> Result<Vec<Types>, DarjeelingError> {
         let mut sum = 0.0;
@@ -236,18 +232,17 @@ impl CatNetwork {
 
         let mut net: CatNetwork = match CatNetwork::read_model(model_name.clone()) {
             Ok(net) => net,
-            Err(error) => {
-                return Err(DarjeelingError::ReadModelFunctionFailed(
-                    model_name,
-                    Box::new(error),
-                ))
-            }
+            Err(error) => return Err(DarjeelingError::LoadModelFailed("later")),
         };
 
-        net.node_array.last().iter().enumerate().for_each(|(i, node)| {
-            node.category = Some(categories[i].clone());
-            dbg_println!("{:?}", node.category);
-        });
+        net.node_array
+            .last()
+            .iter()
+            .enumerate()
+            .for_each(|(i, node)| {
+                node.category = Some(categories[i].clone());
+                dbg_println!("{:?}", node.category);
+            });
 
         for line in 0..data.len() {
             dbg_println!("Testing Checkpoint One Passed");
@@ -258,9 +253,9 @@ impl CatNetwork {
             net.push_downstream(&mut data, line);
             dbg_println!("Sum: {:?} Count: {:?}", sum, count);
             answers.push(
-                    net.self_analysis(&mut None, &mut sum, &mut count, &mut data, &mut mse, line)
-                        .0
-                .clone()
+                net.self_analysis(&mut None, &mut sum, &mut count, &mut data, &mut mse, line)
+                    .0
+                    .clone(),
             );
 
             dbg_println!("Sum: {:?} Count: {:?}", sum, count);
@@ -289,32 +284,26 @@ impl CatNetwork {
             .for_each(|(i, node)| node.category = Some(categories[i].clone()));
     }
 
-    fn assign_answers(&mut self, input: &mut Input) {
+    fn assign_answers(&mut self, input: &Input) {
         self.node_array
             .last_mut()
             .expect("Network has no answer layer")
             .iter_mut()
             .for_each(|node| {
-                node.correct_answer =
-                    if node.category.as_ref().unwrap() == input.answer.as_ref().unwrap() {
-                        Some(1.0)
-                    } else {
-                        Some(0.0)
-                    }
+                node.correct_answer = if node.category == input.answer {
+                    Some(1.0)
+                } else {
+                    Some(0.0)
+                }
             });
     }
 
     /// Passes in data to the sensors, pushs data 'downstream' through the network
-    fn push_downstream(
-        &mut self,
-        data: &mut Vec<Input>,
-        line: usize,
-        activation_function: ActivationFunction
-    ) {
+    fn push_downstream(&mut self, data: &Input, activation_function: ActivationFunction) {
         // Pass data to the input layer
         if let Some(input_layer) = self.node_array.first_mut() {
             input_layer.iter_mut().enumerate().for_each(|(i, node)| {
-                node.cached_output = Some(data[line].inputs[i]);
+                node.cached_output = Some(data.inputs[i]);
             });
         }
 
@@ -351,9 +340,8 @@ impl CatNetwork {
         epochs: &mut Option<f32>,
         sum: &'b mut f32,
         count: &'b mut f32,
-        data: Vec<Input>,
+        series: &Input,
         mse: &mut f32,
-        line: usize,
     ) -> (Types, Option<f32>) {
         dbg_println!("answer {}", self.node_array.len() - 1);
         dbg_println!("largest index {}", self.largest_node());
@@ -369,13 +357,8 @@ impl CatNetwork {
             brightness
         );
 
-        if data[line].answer.is_some() {
-            if brightest_node
-                .category
-                .as_ref()
-                .unwrap()
-                .eq(&data[line].answer.as_ref().unwrap())
-            {
+        if series.answer.is_some() {
+            if brightest_node.category.eq(&series.answer) {
                 dbg_println!("Sum++");
                 *sum += 1.0;
             }

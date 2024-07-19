@@ -45,8 +45,8 @@ impl Node {
             * self.b_weight
     }
 
-    pub fn output(&mut self, activation: &ActivationFunction) -> f32 {
-        match *activation {
+    pub fn output(&mut self, activation: ActivationFunction) -> f32 {
+        match activation {
             ActivationFunction::Sigmoid => Node::sigmoid(self.input()),
             ActivationFunction::Linear => Node::linear(self.input()),
             ActivationFunction::Tanh => Node::tanh(self.input()),

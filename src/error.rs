@@ -8,10 +8,8 @@ pub enum DarjeelingError {
     PointDoesNotExist((String, String)),
     RowAlreadyExists(String),
     ColumnAlreadyExists(String),
-
-    ReadModelFailed(String),
-    ReadModelFunctionFailed(String, Box<DarjeelingError>),
-    WriteModelFailed(String),
+    SaveModelFailed,
+    LoadModelFailed(String),
     InvalidFormatType(TypeId),
     DisinguishingModelError(String),
     SelfAnalysisStringConversion(String),
@@ -37,15 +35,11 @@ impl<'a> fmt::Display for DarjeelingError {
                 "There is no point at row: {:?}, column: {:?}", 
                 row, column
             ),
-            DarjeelingError::ReadModelFailed(model_name) => write!(f,
+            DarjeelingError::SaveModelFailed(model_name) => write!(f,
                 "Unable to read model {:?}, \n Hint: Double check the model_name \n Error Message: {}",
                 model_name.split(";").collect::<Vec<&str>>()[0], model_name.split(";").collect::<Vec<&str>>()[1]
             ),
-            DarjeelingError::ReadModelFunctionFailed(model_name,error ) => write!(f,
-                "The read model function failed on the model {:?} \n The error given by the ReadModelFunction was {:?}",
-                model_name, error
-            ),
-            DarjeelingError::WriteModelFailed(model_name) => write!(f,
+            DarjeelingError::LoadModelFailed(model_name) => write!(f,
                 "Unable to write model {:?}, \n Hint: This is probably because the random name already exists, try saving it again",
                 model_name.as_str()
             ),
