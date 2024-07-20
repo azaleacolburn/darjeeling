@@ -8,7 +8,8 @@ pub enum DarjeelingError {
     PointDoesNotExist((String, String)),
     RowAlreadyExists(String),
     ColumnAlreadyExists(String),
-    SaveModelFailed,
+    ModelMissingActivationFunction,
+    SaveModelFailed(String),
     LoadModelFailed(String),
     InvalidFormatType(TypeId),
     DisinguishingModelError(String),
@@ -78,16 +79,8 @@ impl<'a> fmt::Display for DarjeelingError {
             DarjeelingError::UnknownError(error) => write!(f,
                 "Non-Darjeeling error encountered: \n {:?}",
                 error
-            )
-        }
-    }
-}
-
-impl Error for DarjeelingError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match self {
-            DarjeelingError::ReadModelFunctionFailed(_message, failure) => Some(failure),
-            _ => None,
+            ),
+            _ => write!(f, "Other error I forgot about")
         }
     }
 }

@@ -1,18 +1,23 @@
 # darjeeling
+
 [![Latest version](https://img.shields.io/crates/v/darjeeling.svg?style=for-the-badge)](https://crates.io/crates/darjeeling)
 [![Documentation](https://img.shields.io/docsrs/darjeeling.svg?style=for-the-badge)](https://docs.rs/darjeeling)
-[![License](https://img.shields.io/crates/l/darjeeling.svg?style=for-the-badge)](https://github.com/Ewie21/darjeeling/blob/main/LICENSE)
+[![License](https://img.shields.io/crates/l/darjeeling.svg?style=for-the-badge)](https://github.com/azaleacolburn/darjeeling/blob/main/LICENSE)
 
 Machine learning tools for Rust
 
 # Installation
+
 Add the following dependencies to your `Cargo.toml` file
+
 ```toml
 darjeeling = "0.3.4"
 ```
 
 # Basic Setup
+
 1. Create a network
+
 ```rust
     use darjeeling::{
         categorize,
@@ -25,9 +30,11 @@ darjeeling = "0.3.4"
     let mut net = categorize::NeuralNetwork::new(input_num, hidden_num, answer_num, hidden_layers, ActivationFunction::Sigmoid);
     net.add_hidden_layer_with_size(2);
 ```
+
 You can also add hidden layers with a set number of neurons, since during initialization, all hidden layers must be the same size.
 
 2. Format your data as Inputs
+
 ```rust
     use darjeeling::{
         types::Types,
@@ -38,9 +45,11 @@ You can also add hidden layers with a set number of neurons, since during initia
     let answer_input: Types = Types::String("Bee");
     let input = Input::new(float_inputs, answer_input);
 ```
+
 Inputs represent a set of floating point numbers and which answer node they should be mapped to. For example, if the input is a picture of a Bee, the float_inputs might be the hex value of every pixel, while the answer input might be "Bee". Make sure the answer is always a valid category.
 
 3. Train your network
+
 ```rust
     let learning_rate: f32 = 3.0;
     let categories: Vec<Types> = categories_str_format(vec!["Bee","3"]);
@@ -52,9 +61,11 @@ Inputs represent a set of floating point numbers and which answer node they shou
         Err(_err) => None
     }
 ```
+
 If the training is successful, the model_name is returned along with the percent of the training inputs the network correctly categorized on it's last epoch, and the mean squared error of the training.
 
 4. Test your network
+
 ```rust
     // Do whatever you want with this data
     match categorize::NeuralNetwork::test(data, categories, model_name) {
@@ -64,14 +75,17 @@ If the training is successful, the model_name is returned along with the percent
         Err(err) => {}
     };
 ```
+
 During testing, the answers in the input data should be set to None. The testing returns a vector of all the categories assigned to the data in the same order as the data.
 
 # Examples
+
 ## Categorization
-This program reads from a file containing all possible 
+
+This program reads from a file containing all possible
 inputs to a binary logic gate, and all the correct answers.
 
-Then it trains a model with 1 hidden layer. 
+Then it trains a model with 1 hidden layer.
 2 nodes in its input layer, because there are two inputs.
 2 Nodes for its output layer because there are two possible answers(the "brighter" one is selected a the chosen answer)
 And 2 nodes in its hidden layer, because I like patterns.
@@ -81,6 +95,7 @@ If this doesn't work, check the tests.ts source code for verified working code.
 Hint: Try fiddling with the learning rate you're using if things aren't working properly.
 
 Different problems work differently with different learning rates, although I recommend one of 0.5 to start.
+
 ```rust
     use core::{panic};
     use darjeeling::{ categorize::NeuralNetwork, tests, input::Input, series::Series, dataframe::{DataFrame, Point}};
@@ -95,7 +110,7 @@ Different problems work differently with different learning rates, although I re
 
         NeuralNetwork::test(data, categories, model_name);
     }
-    
+
     fn train_network_xor(mut data:Vec<Input>, categories: Vec<String>, learning_rate: f32) -> Option<String> {
         let input_num: i32 = 2;
         let hidden_num: i32 = 2;
@@ -137,24 +152,27 @@ Different problems work differently with different learning rates, although I re
             inputs.push(input);
         }
 
-    inputs  
+    inputs
     }
 ```
+
 ## Generation
+
 DISCLAIMER: I don't actually recommend using the generative AI feature for interesting results, it's horribly unoptimized, and isn't training very well right now.
 
 This program doesn't have a large enough dataset to get interesting results.
 All it does is just trains a network to verify a proof of concept.
+
 ```rust
     use darjeeling::{
          generation::NeuralNetwork,
          activation::ActivationFunction,
-         input::Input, 
+         input::Input,
          // This file may not be avaliable
          // Everything found here will be hyper-specific to your project.
          tests::{categories_str_format, file}
     };
-     
+
     // A file with data
     // To make sure the networked is properly trained, make sure it follows some sort of pattern
     // This is just sample data, for accurate results, around 3800 datapoints are needed
@@ -172,18 +190,23 @@ All it does is just trains a network to verify a proof of concept.
 ```
 
 # FAQ
+
 ## Why is it called Darjeeling?
+
 Because that's the WiFi password at the Tea Shop where I do most of my programming.
 
 # Contribution
+
 If you want to contribute, check the todo or issues list, fork the code, and make a pull request whenever you're ready. I'm more than open to reviewing any code people want to add. I'd be happy to give any assistance to people wanting to contribute, including but not limited to teaching about Machine Learning, Rust, and how Darjeeling works. We welcome all experience levels here. Just email me if you need anything. If there's a bug that you can't/don't want to fix, open an issue. I hope to one day make this a great project to get started with open source on, although there isn't the infrastructure in place right now to make that happen.
 
 ## Guidelines
+
 - Be kind, respectful, and patient.
 
 # [Contact Me](elocolburn@comcast.net)
 
 # TODO:
+
 - [ ] Make generation better (seriously, it doesn't give good results right now)
 - [ ] Add Support for [Polars](https://www.pola.rs/) Dataframes
 - [ ] Make data manipulation and input formatting easier

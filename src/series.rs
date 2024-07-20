@@ -1,93 +1,48 @@
-// Deprecated
+use std::fmt::Display;
 
-use std::fmt::Debug;
-use crate::types::Types;
-
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
-pub struct Series<I: Clone + Debug + PartialEq> {
-    data: Vec<Types>,
-    indexes: Vec<I>
+
+/// Represents the training inputs to a neural network
+pub struct Series {
+    pub data: Box<[f32]>,
+    pub answer: String,
 }
 
-impl<'a, I: Clone + Debug + PartialEq> Series<I> {
-
-    pub fn new(data: Vec<Types>, indexes: Vec<I>) -> Series<I> {
-
-        Series { data, indexes }
-    }
-
-    pub fn mut_add(&mut self, data: Types, index: I) {
-
-        self.data.push(data);
-        self.indexes.push(index);
-
-    }
-
-    pub fn no_mut_add(&self, data: Types, index: I) -> Series<I> {
-
-        let mut new_self = self.clone();
-
-        new_self.data.push(data);
-        new_self.indexes.push(index);
-
-        new_self
-    }
-
-    pub fn mut_sub(&mut self, index: I) -> Result<(), &str> {
-
-        let mut index_to_remove: Option<usize> = None;
-        for i in 0..self.indexes.len() {
-            if self.indexes[i] == index {
-                index_to_remove = Some(i);
-                self.indexes.remove(i);
-            }
+impl Series {
+    /// Creates new input
+    /// # Params
+    /// - Inputs: A list of 32-bit floating point numbers.
+    /// - Answer: A string, representing the correct answer(or cateogry) of this input.
+    ///
+    /// # Examples
+    /// This example is for one input into an XOR gate
+    /// ```
+    /// use darjeeling::input::Series;
+    /// use darjeeling::types::Types;
+    /// let inputs = vec![0.0,1.0];
+    /// let answer = String::from("1")
+    /// let formated_input = Series::new(inputs, answer);
+    /// ```
+    pub fn new<T, U>(data: T, answer: U) -> Series
+    where
+        T: Into<Box<[f32]>>,
+        U: ToString,
+    {
+        Series {
+            data: data.into(),
+            answer: answer.to_string(),
         }
-        match index_to_remove {
-
-            Some(i) => self.data.remove(i),
-            None => return Err("Index not found")
-        };
-        
-        Ok(())    
     }
+}
 
-    pub fn no_mut_sub(&self, index: I) -> Result<Series<I>, &str> {
-
-        let mut new_self: Series<I> = self.clone();
-        let mut index_to_remove:Option<usize> = None;
-        for i in 0..self.indexes.len() {
-            if new_self.indexes[i] == index {
-                index_to_remove = Some(i);
-                new_self.indexes.remove(i);
-            }
+impl Display for Series {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buffer = String::from("");
+        for i in 0..self.data.len() - 1 {
+            buffer += format!("{},", self.data[i]).as_str();
         }
-        match index_to_remove {
-
-            Some(i) => new_self.data.remove(i),
-            None => return Err("Index not found")
-        };
-        
-        Ok(new_self)   
-    }
-
-    pub fn get(&self, index: I) -> Option<Types> {
-        for i in 0..self.indexes.len() {
-            if self.indexes[i] == index {
-                return Some(self.data[i].clone());
-            }
-        }
-        return None;
-    } 
-
-    pub fn display(&self) {
-
-        assert_eq!(self.data.len(), self.indexes.len());
-
-        for i in 0..self.data.len() {
-            print!("{:?} ", self.indexes[i]);
-            self.data[i].display();
-            print!("\n");
-        }
-        println!("\n");
+        buffer += format!("{}", self.data.last().expect("Series has no elements")).as_str();
+        write!(f, "{}", buffer)
     }
 }

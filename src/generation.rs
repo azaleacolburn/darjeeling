@@ -3,9 +3,7 @@ use crate::{
     categorize::CatNetwork,
     dbg_println,
     error::DarjeelingError,
-    input::Input,
     node::Node,
-    types::{Types, Types::Boolean},
     DEBUG,
 };
 use ascii_converter::decimals_to_string;
@@ -18,10 +16,7 @@ use std::{fs, path::Path};
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GenNetwork {
     node_array: Vec<Vec<Node>>,
-    sensor: Option<usize>,
-    answer: Option<usize>,
-    parameters: Option<u128>,
-    activation_function: ActivationFunction,
+    activation_function: Option<ActivationFunction>,
 }
 #[warn(clippy::unwrap_in_result)]
 impl GenNetwork {
@@ -46,81 +41,49 @@ impl GenNetwork {
     /// let hidden: i32 = 40;
     /// let answer: i32 = 2;
     /// let hidden_layers: i32 = 1;
-    /// let mut net: GenNetwork = GenNetwork::new(inputs, hidden, answer, hidden_layers, ActivationFunction::Sigmoid);
+    /// let mut net = GenNetwork::new(inputs, hidden, answer, hidden_layers, ActivationFunction::Sigmoid);
     /// ```
     pub fn new(
-        input_num: i32,
-        hidden_num: i32,
-        answer_num: i32,
-        hidden_layers: i32,
-        activation_function: ActivationFunction,
+        input_nodes: usize,
+        hidden_nodes: usize,
+        answer_nodes: usize,
+        hidden_layers: usize,
+        activation_function: Option<ActivationFunction>,
     ) -> GenNetwork {
-        let mut net: GenNetwork = GenNetwork {
-            node_array: vec![],
-            sensor: Some(0),
-            answer: Some(hidden_layers as usize + 1),
-            parameters: None,
-            activation_function,
-        };
         let mut rng = rand::thread_rng();
-        net.node_array.push(vec![]);
-        for _i in 0..input_num {
-            net.node_array[net.sensor.unwrap()].push(Node::new(&vec![], None));
-        }
 
-        for i in 1..hidden_layers + 1 {
-            let mut hidden_vec: Vec<Node> = vec![];
-            let hidden_links = net.node_array[(i - 1) as usize].len();
-            dbg_println!("Hidden Links: {:?}", hidden_links);
-            for _j in 0..hidden_num {
-                hidden_vec.push(Node {
-                    link_weights: vec![],
-                    link_vals: vec![],
-                    links: hidden_links,
-                    err_sig: None,
-                    correct_answer: None,
-                    cached_output: None,
-                    category: None,
-                    b_weight: None,
-                });
-            }
-            net.node_array.push(hidden_vec);
-        }
+        let mut node_array: Vec<Box<[Node]>> = vec![];
 
-        net.node_array.push(vec![]);
-        let answer_links = net.node_array[hidden_layers as usize].len();
-        println!("Answer Links: {:?}", answer_links);
-        for _i in 0..answer_num {
-            net.node_array[net.answer.unwrap()].push(Node {
-                link_weights: vec![],
-                link_vals: vec![],
-                links: answer_links,
-                err_sig: None,
-                correct_answer: None,
-                cached_output: Some(0.0),
-                category: None,
-                b_weight: None,
-            });
-        }
+        let input_row: Box<[Node]> = (0..input_nodes)
+            .map(|_| Node::new(vec![1.00; hidden_nodes].into_boxed_slice(), 1.0))
+            .collect::<Box<[Node]>>();
+        node_array.push(input_row);
 
-        net.node_array.iter_mut().for_each(|layer| {
-            layer.iter_mut().for_each(|mut node| {
-                node.b_weight = Some(rng.gen_range(-0.5..0.5));
-                dbg_println!("Made it to pushing link weights");
-                (0..node.links).into_iter().for_each(|_| {
-                    node.link_weights.push(rng.gen_range(-0.5..0.5));
-                    node.link_vals.push(None);
+        (1..hidden_layers + 1).into_iter().for_each(|_| {
+            let hidden_vec: Box<[Node]> = (0..hidden_nodes)
+                .into_iter()
+                .map(|_| {
+                    Node::new(
+                        vec![rng.gen_range(-0.5..0.5); answer_nodes].into_boxed_slice(),
+                        rng.gen_range(-0.5..0.5),
+                    )
                 })
-            })
+                .collect::<Box<[Node]>>();
+            node_array.push(hidden_vec);
         });
-        let mut params = 0;
-        (0..net.node_array.len()).into_iter().for_each(|i| {
-            (0..net.node_array[i].len()).into_iter().for_each(|j| {
-                params += 1 + net.node_array[i][j].links as u128;
-            })
-        });
-        net.parameters = Some(params);
-        net
+
+        // TODO: Make these link weights None or smth
+        let answer_row: Box<[Node]> = (0..answer_nodes)
+            .into_iter()
+            .map(|_| Node::new(vec![0.00; 1].into_boxed_slice(), rng.gen_range(-0.5..0.5)))
+            .collect::<Box<[Node]>>();
+
+        node_array.push(answer_row);
+
+        GenNetwork {
+            node_array: node_array.into_boxed_slice(),
+            activation_function,
+        }
     }
 
     /// Trains a neural model to generate new data formatted as inputs, based on the given data
