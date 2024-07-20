@@ -202,6 +202,7 @@ If you want to contribute, check the todo or issues list, fork the code, and mak
 ## Guidelines
 
 - Be kind, respectful, and patient.
+- Don't be an "AI Bro"
 
 # [Contact Me](elocolburn@comcast.net)
 
@@ -212,4 +213,6 @@ If you want to contribute, check the todo or issues list, fork the code, and mak
 - [ ] Make data manipulation and input formatting easier
 - [ ] Optimize a lot
 
-Darjeelings implementations of Dataframes and Series' are now deprecated
+# Notes
+- Darjeelings implementations of Dataframes is now deprecated
+- I don't like AI, I'm just doing this because I like Rust, programming, and I thought maintaining a crate would be fun. Don't let AI slop replace human innovation and art.
