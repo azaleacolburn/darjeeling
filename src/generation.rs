@@ -1,10 +1,5 @@
 use crate::{
-    activation::ActivationFunction,
-    categorize::CatNetwork,
-    dbg_println,
-    error::DarjeelingError,
-    node::Node,
-    DEBUG,
+    activation::ActivationFunction, categorize::CatNetwork, dbg_println, error::DarjeelingError, neural_network::NeuralNetwork, node::Node, series::Series, utils::RandomIter, DEBUG
 };
 use ascii_converter::decimals_to_string;
 use rand::{seq::SliceRandom, thread_rng, Rng};
@@ -15,7 +10,7 @@ use std::{fs, path::Path};
 /// The generation Neural Network struct
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GenNetwork {
-    node_array: Vec<Vec<Node>>,
+    node_array: Box<[Box<[Node]>]>,
     activation_function: Option<ActivationFunction>,
 }
 #[warn(clippy::unwrap_in_result)]
@@ -59,7 +54,7 @@ impl GenNetwork {
             .collect::<Box<[Node]>>();
         node_array.push(input_row);
 
-        (1..hidden_layers + 1).into_iter().for_each(|_| {
+        for _ in 0..hidden_layers + 1 {
             let hidden_vec: Box<[Node]> = (0..hidden_nodes)
                 .into_iter()
                 .map(|_| {
@@ -70,7 +65,7 @@ impl GenNetwork {
                 })
                 .collect::<Box<[Node]>>();
             node_array.push(hidden_vec);
-        });
+        }
 
         // TODO: Make these link weights None or smth
         let answer_row: Box<[Node]> = (0..answer_nodes)
@@ -154,41 +149,41 @@ impl GenNetwork {
     pub fn learn(
         // Frankly this whole function is disgusting and needs to be burned; I concur from the future
         &mut self,
-        data: &mut Vec<Input>,
+        data: &Box<[Series]>,
         learning_rate: f32,
         name: &str,
-        max_cycles: i32,
+        max_cycles: usize,
         distinguising_learning_rate: f32,
-        distinguising_hidden_neurons: i32,
-        distinguising_hidden_layers: i32,
+        distinguising_hidden_neurons: usize,
+        distinguising_hidden_layers: usize,
         distinguising_activation: ActivationFunction,
         distinguishing_target_err_percent: f32,
     ) -> Result<String, DarjeelingError> {
         let mut epochs: f32 = 0.0;
-        let distinguishing_model: *mut CatNetwork = &mut CatNetwork::new(
-            self.node_array[self.answer.unwrap()].len() as i32,
+        let distinguishing_model = CatNetwork::new(
+            self.node_array.last().expect("Network has no layers").len(),
             distinguising_hidden_neurons,
             2,
             distinguising_hidden_layers,
-            distinguising_activation,
+            Some(distinguising_activation),
         );
-        let mut outputs: Vec<Input> = vec![];
-        for _i in 0..max_cycles {
+
+        let mut outputs: Vec<Series> = vec![];
+        for _ in 0..max_cycles {
             let mse: f32;
-            data.shuffle(&mut thread_rng());
-            for line in 0..data.len() {
+            let data_iter = RandomIter::new(data);
+
+            // Train generation network
+            for line in data_iter {
                 dbg_println!("Training Checkpoint One Passed");
-                self.push_downstream(data, line as i32);
-                let mut output = vec![];
-                for i in 0..self.node_array[self.answer.unwrap()].len() {
-                    output.push(
-                        self.node_array[self.answer.unwrap()][i].output(&self.activation_function),
-                    );
-                }
-                outputs.push(Input::new(output, Some(Boolean(false)))); // false indicates not real data
+                self.push_downstream(data, line);
+                let answer_layer = self.node_array.last().expect("Network has no layers");
+
+                outputs.push(answer_layer.iter().map(|node| node.output(&self.activation_function)).collect::<Box<[f32]>>()); // false indicates not real data
                 data[line].answer = Some(Boolean(true));
                 outputs.push(data[line].clone());
             }
+
             // Do we train a new one from scratch or do we continue training the old one
             // We still need to figure out how to accurately deal with distinguishing error affecting the generative model
             let mut new_model: CatNetwork = CatNetwork::new(
@@ -198,7 +193,7 @@ impl GenNetwork {
                 distinguising_hidden_layers,
                 distinguising_activation,
             );
-            match new_model.learn(
+            mse = match new_model.learn(
                 data,
                 vec![Boolean(true), Boolean(false)],
                 distinguising_learning_rate,
@@ -206,7 +201,7 @@ impl GenNetwork {
                 distinguishing_target_err_percent,
                 false,
             ) {
-                Ok((_name, _err_percent, errmse)) => mse = errmse,
+                Ok((_name, _err_percent, errmse)) => errmse,
                 Err(error) => {
                     return Err(DarjeelingError::DisinguishingModelError(error.to_string()))
                 }
