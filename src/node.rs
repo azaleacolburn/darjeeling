@@ -1,4 +1,4 @@
-use crate::{activation::ActivationFunction, dbg_println, types::Types, DEBUG};
+use crate::{activation::ActivationFunction, dbg_println, DEBUG};
 use serde::{Deserialize, Serialize};
 
 /// Represents a node in the network
@@ -12,7 +12,7 @@ pub struct Node {
     #[serde(skip_serializing)]
     pub correct_answer: Option<f32>,
     #[serde(skip_serializing)]
-    pub category: Option<Types>,
+    pub category: Option<String>,
     #[serde(skip_serializing)]
     pub cached_output: Option<f32>,
 }
@@ -86,7 +86,7 @@ impl Node {
     }
 
     pub fn adjust_weights(&mut self, learning_rate: f32) {
-        self.b_weight = self.b_weight + self.err_sig.unwrap() * learning_rate;
+        self.b_weight += self.err_sig.unwrap() * learning_rate;
         self.link_weights = (0..self.link_weights.len())
             .into_iter()
             .map(|link| {
@@ -96,8 +96,8 @@ impl Node {
                     self.link_vals[link],
                     self.err_sig
                 );
-                let new_weight: f32 = self.err_sig.unwrap() * self.link_vals[link] * learning_rate;
-                dbg_println!("Adjusted Weight: {:?}\n", self.link_weights[link]);
+
+                let new_weight = self.link_weights[link] + self.err_sig.unwrap() * self.link_vals[link] * learning_rate;
                 new_weight
             })
             .collect::<Box<[f32]>>()

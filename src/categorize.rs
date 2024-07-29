@@ -49,35 +49,49 @@ impl NeuralNetwork for CatNetwork {
         hidden_layers: usize,
         activation_function: Option<ActivationFunction>,
     ) -> CatNetwork {
+        // links point backwards to previous layer
         let mut rng = rand::thread_rng();
 
         let mut node_array: Vec<Box<[Node]>> = vec![];
 
         let input_row: Box<[Node]> = (0..input_nodes)
-            .map(|_| Node::new(vec![1.00; hidden_nodes].into_boxed_slice(), 1.0))
+            .map(|_| Node::new(vec![].into_boxed_slice(), 1.0))
             .collect::<Box<[Node]>>();
         node_array.push(input_row);
 
-        (1..hidden_layers + 1).into_iter().for_each(|_| {
+        // links point backwards, so the first layer has a different number of them
+        let first_hidden_layer = (0..hidden_nodes)
+            .into_iter()
+            .map(|_| {
+                Node::new(
+                    vec![rng.gen_range(-0.5..0.5); input_nodes].into_boxed_slice(),
+                    rng.gen_range(-0.5..0.5),
+                )
+            })
+            .collect();
+        node_array.push(first_hidden_layer);
+
+        // includes the answer node
+        for _ in 1..hidden_layers {
             let hidden_vec: Box<[Node]> = (0..hidden_nodes)
                 .into_iter()
-                .map(|_| {
+                .map(|_| 
                     Node::new(
-                        vec![rng.gen_range(-0.5..0.5); answer_nodes].into_boxed_slice(),
+                        vec![rng.gen_range(-0.5..0.5); hidden_nodes].into_boxed_slice(),
                         rng.gen_range(-0.5..0.5),
                     )
-                })
-                .collect::<Box<[Node]>>();
+                )
+                .collect();
             node_array.push(hidden_vec);
-        });
+        }
 
-        // TODO: Make these link weights None or smth
-        let answer_row: Box<[Node]> = (0..answer_nodes)
+        let answer_layer = (0..answer_nodes)
             .into_iter()
-            .map(|_| Node::new(vec![0.00; 1].into_boxed_slice(), rng.gen_range(-0.5..0.5)))
-            .collect::<Box<[Node]>>();
+            .map(|_| Node::new(
+                vec![rng.gen_range(-0.5..0.5); hidden_nodes].into_boxed_slice(),
+                rng.gen_range(-0.5..0.5))).collect();
 
-        node_array.push(answer_row);
+        node_array.push(answer_layer);
 
         CatNetwork {
             node_array: node_array.into_boxed_slice(),
@@ -173,15 +187,15 @@ impl NeuralNetwork for CatNetwork {
             for series in data_iter {
                 dbg_println!("Training Checkpoint One Passed");
 
-                println!("Assign");
+                dbg_println!("Assign");
                 bench!(self.assign_answers(series));
 
-                println!("Push");
+                dbg_println!("Push");
                 bench!(self.push_downstream(series, activation_function));
 
                 dbg_println!("Sum: {:?} Count: {:?}", sum, count);
 
-                println!("Analysis");
+                dbg_println!("Analysis");
                 bench!(self.self_analysis(
                     &mut Some(epochs),
                     &mut sum,
@@ -192,7 +206,7 @@ impl NeuralNetwork for CatNetwork {
 
                 dbg_println!("Sum: {:?} Count: {:?}", sum, count);
 
-                println!("Backpropogate");
+                dbg_println!("Backpropogate");
                 bench!(self.backpropogate(learning_rate, activation_function));
             }
 
@@ -276,12 +290,11 @@ impl CatNetwork {
             .expect("Network has no answer layer")
             .iter_mut()
             .for_each(|node| {
-                node.correct_answer =
-                    if node.category.expect("Node has no category") == input.answer {
-                        Some(1.0)
-                    } else {
-                        Some(0.0)
-                    }
+                node.correct_answer = if node.category.clone().unwrap() == input.answer {
+                    Some(1.0)
+                } else {
+                    Some(0.0)
+                }
             });
     }
 
@@ -299,8 +312,9 @@ impl CatNetwork {
             // Clone the cached outputs from the previous layer
             let prev_cached_outputs: Box<[f32]> = self.node_array[layer_i - 1]
                 .iter()
-                .map(|node| {
-                    node.cached_output
+                .map(|prev_node| {
+                    prev_node
+                        .cached_output
                         .expect("Previous nodes do not have cached outputs")
                 })
                 .collect();
@@ -315,7 +329,7 @@ impl CatNetwork {
                         node.link_vals[prev_node_i] = *prev_output;
                     });
 
-                node.output(activation_function);
+                node.cached_output = Some(node.output(activation_function));
             });
         }
     }
@@ -344,7 +358,7 @@ impl CatNetwork {
             brightness
         );
 
-        if brightest_node.category.eq(&series.answer) {
+        if brightest_node.category.clone().unwrap() == series.answer {
             dbg_println!("Sum++");
             *sum += 1.0;
         }
@@ -385,7 +399,7 @@ impl CatNetwork {
         }
     }
 
-    fn calculate_err_for_generation_model(mse: &mut f32, node: &Node) -> f32 {
+    pub fn calculate_err_for_generation_model(mse: &mut f32, node: &Node) -> f32 {
         *mse += f32::powi(
             node.correct_answer.unwrap() - node.cached_output.unwrap(),
             2,
@@ -442,7 +456,7 @@ impl CatNetwork {
                             next_node.err_sig.unwrap_or(0.00),
                         )
                     })
-                    .collect::<Box<[(f32, f32)]>>();
+                    .collect();
 
                 next_layer.iter_mut().for_each(|(next_weight, err_sig)| {
                     // This changes based on the activation function
@@ -454,14 +468,9 @@ impl CatNetwork {
                 });
 
                 let hidden_result = self.node_array[layer][node].cached_output.unwrap();
-                let multiplied_value = self.node_array[layer][node].err_sig.unwrap()
-                    * (hidden_result)
-                    * (1.0 - hidden_result);
+                self.node_array[layer][node].err_sig = Some(self.node_array[layer][node].err_sig.unwrap() * hidden_result * (1.0 - hidden_result));
 
-                dbg_println!("New hidden errsig multiply: {:?}", multiplied_value);
-
-                self.node_array[layer][node].err_sig = Some(multiplied_value);
-
+                dbg_println!("New hidden errsig multiply: {:?}", self.node_array[layer][node].err_sig);
                 dbg_println!("\nLayer: {:?}", layer);
                 dbg_println!("Node: {:?}", node);
 

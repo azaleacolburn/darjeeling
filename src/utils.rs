@@ -1,4 +1,7 @@
+use std::collections::HashSet;
 pub use std::time::Instant;
+
+use rand::Rng;
 #[macro_export]
 macro_rules! dbg_println {
     // `()` indicates that the macro takes no argument.
@@ -12,7 +15,9 @@ macro_rules! bench {
     ($($arg:tt)*) => {
         let now = $crate::utils::Instant::now();
         $($arg)*;
-        println!("Elapsed: {:?}", $crate::utils::Instant::now() - now);
+        if DEBUG {
+            println!("Elapsed: {:?}", $crate::utils::Instant::now() - now);
+        }
     };
 }
 
@@ -36,7 +41,7 @@ impl<'a, T> RandomIter<'a, T> {
 impl<'a, T> Iterator for RandomIter<'a, T> {
     type Item = &'a T;
 
-    pub fn next(&mut self) -> Option<Self::Item> {
+    fn next(&mut self) -> Option<Self::Item> {
         if self.indices.len() == self.count {
             return None;
         }

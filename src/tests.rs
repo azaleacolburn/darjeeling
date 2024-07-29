@@ -5,12 +5,8 @@ use std::{
 };
 
 use crate::{
-    activation::ActivationFunction,
-    categorize::CatNetwork,
-    generation::GenNetwork,
-    // dataframe::DataFrame,
-    series::Series,
-    DEBUG,
+    activation::ActivationFunction, categorize::CatNetwork, generation::GenNetwork,
+    neural_network::NeuralNetwork, series::Series, DEBUG,
 };
 
 // #[test]
@@ -24,16 +20,15 @@ use crate::{
 #[test]
 pub fn train_test_xor() {
     let learning_rate = 0.1;
-    let categories: Box<[String]> = categories_float_format(vec![1.0, 0.0]);
+    let categories: Box<[String]> = vec!["1".to_string(), "0".to_string()].into_boxed_slice();
     let mut data: Box<[Series]> = xor_file();
 
     // Panics if unwraps a None value
-    let model_name: String =
-        train_network_xor(data.clone(), categories.clone(), learning_rate).unwrap();
+    let mut model = train_network_xor(data.clone(), categories.clone(), learning_rate);
     data.iter_mut().for_each(|input| {
-        input.answer = None;
+        input.answer = String::new();
     });
-    CatNetwork::test(data, categories, model_name).unwrap();
+    model.test(&data, categories).unwrap();
 }
 
 /// Returns None if the learn function returns an Err variant
@@ -41,7 +36,7 @@ fn train_network_xor(
     data: Box<[Series]>,
     categories: Box<[String]>,
     learning_rate: f32,
-) ->  {
+) -> CatNetwork {
     let input_num = 2;
     let hidden_num = 2;
     let answer_num = 2;
@@ -54,10 +49,9 @@ fn train_network_xor(
         Some(ActivationFunction::Sigmoid),
     );
 
-    match net.train(&data, categories, learning_rate, "xor", 99.0, true) {
-        Ok((model_name, _err_percent, _mse)) => Some(model_name.expect("write is true")),
-        Err(_err) => None,
-    }
+    net.train(&data, categories, learning_rate, "xor", 99.0, true)
+        .expect("Failed to train xor network");
+    net
 }
 
 /// Read the file you want to and format it as Inputs
@@ -103,11 +97,13 @@ pub fn xor_file<'a>() -> Box<[Series]> {
 #[test]
 fn train_test_digits() {
     let learning_rate: f32 = 0.05;
-    let categories: Vec<String> =
-        categories_str_format(vec!["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]);
+    let categories: Box<[String]> = vec!["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+        .into_iter()
+        .map(|n| n.to_string())
+        .collect();
     let data: Box<[Series]> = digits_file();
 
-    let model = train_network_digits(data.clone(), categories.clone(), learning_rate);
+    let mut model = train_network_digits(data.clone(), categories.clone(), learning_rate);
 
     model.test(&data, categories).unwrap();
 }
@@ -167,17 +163,14 @@ fn digits_file() -> Box<[Series]> {
 fn train_test_gen() {
     let model_name = train_gen();
     let data = gen_data_file();
-    let data1 = data[data.len() - 1].clone();
-    let mut model: GenNetwork = GenNetwork::read_model(model_name).unwrap();
-    let output = model.test(&mut vec![data1]).unwrap();
-    for i in 0..output.len() {
-        println!("{}", output[i]);
-    }
+    let mut model = GenNetwork::read_model(model_name).unwrap();
+    let output = model.test(&data).unwrap();
+    println!("{:?}", output);
 }
 
 fn train_gen() -> String {
     let mut inputs = gen_data_file();
-    let mut net = GenNetwork::new(8, 8, 8, 1, ActivationFunction::Sigmoid);
+    let mut net = GenNetwork::new(8, 8, 8, 1, Some(ActivationFunction::Sigmoid));
     net.learn(
         &inputs,
         1.0,
