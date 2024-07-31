@@ -6,7 +6,7 @@ use std::{
 
 use crate::{
     activation::ActivationFunction, categorize::CatNetwork, generation::GenNetwork,
-    neural_network::NeuralNetwork, series::Series, DEBUG,
+    neural_network::NeuralNetwork, series::Series, DEBUG, dbg_println
 };
 
 // #[test]
@@ -19,7 +19,7 @@ use crate::{
 
 #[test]
 pub fn train_test_xor() {
-    let learning_rate = 0.1;
+    let learning_rate = 0.5;
     let categories: Box<[String]> = vec!["1".to_string(), "0".to_string()].into_boxed_slice();
     let mut data: Box<[Series]> = xor_file();
 
@@ -40,7 +40,7 @@ fn train_network_xor(
     let input_num = 2;
     let hidden_num = 2;
     let answer_num = 2;
-    let hidden_layers = 1;
+    let hidden_layers = 2;
     let mut net = CatNetwork::new(
         input_num,
         hidden_num,
@@ -96,7 +96,7 @@ pub fn xor_file<'a>() -> Box<[Series]> {
 
 #[test]
 fn train_test_digits() {
-    let learning_rate: f32 = 0.05;
+    let learning_rate: f32 = 0.01;
     let categories: Box<[String]> = vec!["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
         .into_iter()
         .map(|n| n.to_string())
@@ -115,7 +115,7 @@ fn train_network_digits(
     categories: Box<[String]>,
     learning_rate: f32,
 ) -> CatNetwork {
-    let mut net = CatNetwork::new(64, 128, 10, 1, Some(ActivationFunction::Sigmoid));
+    let mut net = CatNetwork::new(64, 128, 10, 2, Some(ActivationFunction::Sigmoid));
 
     net.train(&data, categories, learning_rate, "digits", 99.0, true)
         .expect("Training Digits Network Failed");
@@ -147,12 +147,10 @@ fn digits_file() -> Box<[Series]> {
             float_inputs,
             String::from(init_inputs[init_inputs.len() - 1]),
         );
-        if DEBUG {
-            println!(
+            dbg_println!(
                 "Correct Answer: {:?}",
                 init_inputs[init_inputs.len() - 1].to_string()
             );
-        }
         inputs.push(input);
     }
 
