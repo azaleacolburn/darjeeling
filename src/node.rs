@@ -55,18 +55,18 @@ impl Node {
     }
 
     pub fn compute_answer_err_sig(&mut self, activation: ActivationFunction) -> f32 {
-        let output = self
+        let cached_output = self
             .cached_output
             .expect("Answer Node Missing Cached Output");
 
         let derivative: f32 = match activation {
-            ActivationFunction::Sigmoid => output * (1.0 - output),
+            ActivationFunction::Sigmoid => cached_output * (1.0 - cached_output),
             ActivationFunction::Linear => 2.0,
+            // Unsupported
             ActivationFunction::Tanh => 1.0, //- unsafe { std::intrinsics::powf32(y, 2.0) };
         };
 
-        self.err_sig = Some((self.correct_answer.unwrap() - output) * derivative);
-        dbg_println!("Err Signal Post: {:?}", self.err_sig);
+        self.err_sig = Some((self.correct_answer.unwrap() - cached_output) * cached_output * derivative);
         self.err_sig.unwrap()
     }
 
@@ -86,21 +86,14 @@ impl Node {
     }
 
     pub fn adjust_weights(&mut self, learning_rate: f32) {
-        self.b_weight += self.err_sig.unwrap() * learning_rate;
-        self.link_weights = (0..self.link_weights.len())
-            .into_iter()
-            .map(|link| {
-                dbg_println!(
-                    "\nInitial weights: {:?}\nLink Value: {:?}\nErr: {:?}",
-                    self.link_weights[link],
-                    self.link_vals[link],
-                    self.err_sig
-                );
-
-                let new_weight = self.link_weights[link] + self.err_sig.unwrap() * self.link_vals[link] * learning_rate;
-                new_weight
-            })
-            .collect::<Box<[f32]>>()
+        let err_sig = self.err_sig.expect("Node has no error signal");
+        self.b_weight += err_sig * learning_rate;
+        self.link_weights = self.link_weights
+            .iter()
+            .enumerate()
+            .map(|(link, link_weight)|
+                link_weight + err_sig * self.link_vals[link] * learning_rate)
+            .collect();
     }
 
     fn sigmoid(x: f32) -> f32 {

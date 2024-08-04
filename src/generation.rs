@@ -44,35 +44,49 @@ impl GenNetwork {
         hidden_layers: usize,
         activation_function: Option<ActivationFunction>,
     ) -> GenNetwork {
+        // links point backwards to previous layer
         let mut rng = rand::thread_rng();
 
         let mut node_array: Vec<Box<[Node]>> = vec![];
 
         let input_row: Box<[Node]> = (0..input_nodes)
-            .map(|_| Node::new(vec![1.00; hidden_nodes].into_boxed_slice(), 1.0))
+            .map(|_| Node::new(vec![].into_boxed_slice(), 1.0))
             .collect::<Box<[Node]>>();
         node_array.push(input_row);
 
-        for _ in 0..hidden_layers + 1 {
+        // links point backwards, so the first layer has a different number of them
+        let first_hidden_layer = (0..hidden_nodes)
+            .into_iter()
+            .map(|_| {
+                Node::new(
+                    vec![rng.gen_range(-0.5..0.5); input_nodes].into_boxed_slice(),
+                    rng.gen_range(-0.5..0.5),
+                )
+            })
+            .collect();
+        node_array.push(first_hidden_layer);
+
+        // includes the answer node
+        for _ in 1..hidden_layers {
             let hidden_vec: Box<[Node]> = (0..hidden_nodes)
                 .into_iter()
-                .map(|_| {
+                .map(|_| 
                     Node::new(
-                        vec![rng.gen_range(-0.5..0.5); answer_nodes].into_boxed_slice(),
+                        vec![rng.gen_range(-0.5..0.5); hidden_nodes].into_boxed_slice(),
                         rng.gen_range(-0.5..0.5),
                     )
-                })
-                .collect::<Box<[Node]>>();
+                )
+                .collect();
             node_array.push(hidden_vec);
         }
 
-        // TODO: Make these link weights None or smth
-        let answer_row: Box<[Node]> = (0..answer_nodes)
+        let answer_layer = (0..answer_nodes)
             .into_iter()
-            .map(|_| Node::new(vec![0.00; 1].into_boxed_slice(), rng.gen_range(-0.5..0.5)))
-            .collect::<Box<[Node]>>();
+            .map(|_| Node::new(
+                vec![rng.gen_range(-0.5..0.5); hidden_nodes].into_boxed_slice(),
+                rng.gen_range(-0.5..0.5))).collect();
 
-        node_array.push(answer_row);
+        node_array.push(answer_layer);
 
         GenNetwork {
             node_array: node_array.into_boxed_slice(),
@@ -145,7 +159,7 @@ impl GenNetwork {
     /// let model_name: String = net.learn(&mut data, 0.5, "gen", 100, 0.5, 10, 1, ActivationFunction::Sigmoid, 99.0).unwrap();
     /// let new_data: Vec<Input> = net.test(data).unwrap();
     /// ```
-    pub fn learn(
+    pub fn train(
         // Frankly this whole function is disgusting and needs to be burned; I concur from the future
         &mut self,
         data: &Box<[Box<[f32]>]>,
@@ -194,7 +208,7 @@ impl GenNetwork {
                 .map(|line| Series::new(line.clone(), ""))
                 .collect();
 
-            let mse: f32 = match distinguishing_model.train(
+            let _mse: f32 = match distinguishing_model.train(
                 &series_data,
                 vec!["real".to_string(), "generated".to_string()].into_boxed_slice(),
                 distinguising_learning_rate,
@@ -218,26 +232,29 @@ impl GenNetwork {
         let data_iter = RandomIter::new(data);
         let activation_function = self.activation_function.unwrap();
 
-        Ok(data_iter.map(|line|{
-            self.push_downstream(line, activation_function);
-            self.node_array.last().expect("Network has no layers")
-                .iter()
-                .map(|node| {
-                    node.cached_output
-                        .expect("Answer layer node does not have cached output")
-                })
-                .collect()
-        }).collect())
+        Ok(data_iter
+            .map(|line| {
+                self.push_downstream(line, activation_function);
+                self.node_array
+                    .last()
+                    .expect("Network has no layers")
+                    .iter()
+                    .map(|node| {
+                        node.cached_output
+                            .expect("Answer layer node does not have cached output")
+                    })
+                    .collect()
+            })
+            .collect())
     }
 
     /// Passes in data to the sensors, pushs data 'downstream' through the network
     fn push_downstream(&mut self, data: &Box<[f32]>, activation_function: ActivationFunction) {
         // Pass data to the input layer
-        if let Some(input_layer) = self.node_array.first_mut() {
-            input_layer.iter_mut().enumerate().for_each(|(i, node)| {
+        self.node_array.first_mut().expect("Neural Network has no layers")
+            .iter_mut().enumerate().for_each(|(i, node)| {
                 node.cached_output = Some(data[i]);
             });
-        }
 
         // Push forward hidden and output layers
         for layer_i in 1..self.node_array.len() {
@@ -257,13 +274,14 @@ impl GenNetwork {
                     .iter()
                     .enumerate()
                     .for_each(|(prev_node_i, prev_output)| {
+                        assert_eq!(prev_cached_outputs.len(), node.link_vals.len());
                         node.link_vals[prev_node_i] = *prev_output;
+                        node.cached_output = Some(node.output(activation_function));
                     });
-
-                node.output(activation_function);
             });
         }
     }
+
     /// Analyses the chosen answer node's result.
     /// Also increments sum and count
     fn self_analysis(

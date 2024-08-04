@@ -176,38 +176,39 @@ impl NeuralNetwork for CatNetwork {
         let mut err_percent = 0.0;
         let mut mse = 0.0;
 
-        println!("Categorize");
+        dbg_println!("Categorize");
         bench!(self.categorize(categories));
 
         while err_percent < target_err_percent {
             count = 0.0;
             sum = 0.0;
+            err_percent = 0.00;
 
             let data_iter = RandomIter::new(data);
             for series in data_iter {
-                dbg_println!("Training Checkpoint One Passed");
+                //dbg_println!("Training Checkpoint One Passed");
 
-                dbg_println!("Assign");
-                bench!(self.assign_answers(series));
+                //dbg_println!("Assign");
+                self.assign_answers(series);
 
-                dbg_println!("Push");
-                bench!(self.push_downstream(series, activation_function));
+                //dbg_println!("Push");
+                self.push_downstream(series, activation_function);
 
-                dbg_println!("Sum: {:?} Count: {:?}", sum, count);
+                //dbg_println!("Sum: {:?} Count: {:?}", sum, count);
 
-                dbg_println!("Analysis");
-                bench!(self.self_analysis(
+                //dbg_println!("Analysis");
+                self.self_analysis(
                     &mut Some(epochs),
                     &mut sum,
                     &mut count,
                     series,
                     &mut mse,
-                ));
+                );
 
-                dbg_println!("Sum: {:?} Count: {:?}", sum, count);
+                //dbg_println!("Sum: {:?} Count: {:?}", sum, count);
 
-                dbg_println!("Backpropogate");
-                bench!(self.backpropogate(learning_rate, activation_function));
+                //dbg_println!("Backpropogate");
+                self.backpropogate(learning_rate, activation_function);
             }
 
             // let _old_err_percent = err_percent;
@@ -301,11 +302,10 @@ impl CatNetwork {
     /// Passes in data to the sensors, pushs data 'downstream' through the network
     fn push_downstream(&mut self, data: &Series, activation_function: ActivationFunction) {
         // Pass data to the input layer
-        if let Some(input_layer) = self.node_array.first_mut() {
-            input_layer.iter_mut().enumerate().for_each(|(i, node)| {
+        self.node_array.first_mut().expect("Neural Network has no layers")
+            .iter_mut().enumerate().for_each(|(i, node)| {
                 node.cached_output = Some(data.data[i]);
             });
-        }
 
         // Push forward hidden and output layers
         for layer_i in 1..self.node_array.len() {
@@ -327,9 +327,8 @@ impl CatNetwork {
                     .enumerate()
                     .for_each(|(prev_node_i, prev_output)| {
                         node.link_vals[prev_node_i] = *prev_output;
+                        node.cached_output = Some(node.output(activation_function));
                     });
-
-                node.cached_output = Some(node.output(activation_function));
             });
         }
     }
@@ -427,11 +426,7 @@ impl CatNetwork {
             .last_mut()
             .expect("Network has no layers")
             .iter_mut()
-            .for_each(|node| {
-                node.compute_answer_err_sig(activation_function);
-
-                dbg_println!("Answer Node(Post Error Calc): {:?}", node);
-            });
+            .for_each(|node|{ node.compute_answer_err_sig(activation_function);});
 
         self.adjust_hidden_weights(learning_rate, hidden_layers);
 
@@ -439,7 +434,7 @@ impl CatNetwork {
             .last_mut()
             .expect("Network has no layers")
             .iter_mut()
-            .for_each(|node| node.adjust_weights(learning_rate));
+            .for_each(|node| {node.adjust_weights(learning_rate);});
     }
 
     /// Adjusts the weights of all the hidden neurons in a network
@@ -468,6 +463,7 @@ impl CatNetwork {
                 });
 
                 let hidden_result = self.node_array[layer][node].cached_output.unwrap();
+                // TODO: This is contains the derivative and changes based on the activation function
                 self.node_array[layer][node].err_sig = Some(self.node_array[layer][node].err_sig.unwrap() * hidden_result * (1.0 - hidden_result));
 
                 dbg_println!("New hidden errsig multiply: {:?}", self.node_array[layer][node].err_sig);

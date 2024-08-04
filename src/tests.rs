@@ -5,8 +5,8 @@ use std::{
 };
 
 use crate::{
-    activation::ActivationFunction, categorize::CatNetwork, generation::GenNetwork,
-    neural_network::NeuralNetwork, series::Series, DEBUG, dbg_println
+    activation::ActivationFunction, categorize::CatNetwork, dbg_println, generation::GenNetwork,
+    neural_network::NeuralNetwork, series::Series, DEBUG,
 };
 
 // #[test]
@@ -147,10 +147,10 @@ fn digits_file() -> Box<[Series]> {
             float_inputs,
             String::from(init_inputs[init_inputs.len() - 1]),
         );
-            dbg_println!(
-                "Correct Answer: {:?}",
-                init_inputs[init_inputs.len() - 1].to_string()
-            );
+        dbg_println!(
+            "Correct Answer: {:?}",
+            init_inputs[init_inputs.len() - 1].to_string()
+        );
         inputs.push(input);
     }
 
@@ -167,9 +167,9 @@ fn train_test_gen() {
 }
 
 fn train_gen() -> String {
-    let mut inputs = gen_data_file();
+    let inputs = gen_data_file();
     let mut net = GenNetwork::new(8, 8, 8, 1, Some(ActivationFunction::Sigmoid));
-    net.learn(
+    net.train(
         &inputs,
         1.0,
         "dummy_gen",
