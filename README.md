@@ -11,7 +11,7 @@ Machine learning tools for Rust
 Add the following dependencies to your `Cargo.toml` file
 
 ```toml
-darjeeling = "0.3.4"
+darjeeling = "0.3.5"
 ```
 
 # Basic Setup
@@ -204,7 +204,7 @@ If you want to contribute, check the todo or issues list, fork the code, and mak
 - Be kind, respectful, and patient.
 - Don't be an "AI Bro"
 
-# [Contact Me](elocolburn@comcast.net)
+# [Contact Me](azaleacolburn@gmail.com)
 
 # TODO:
 
@@ -215,4 +215,4 @@ If you want to contribute, check the todo or issues list, fork the code, and mak
 
 # Notes
 - Darjeelings implementations of Dataframes is now deprecated
-- I don't like AI, I'm just doing this because I like Rust, programming, and I thought maintaining a crate would be fun. Don't let AI slop replace human innovation and art.
+- I don't like AI, I'm just doing this because I like Rust, programming. Don't let AI slop replace human innovation and art.
