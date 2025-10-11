@@ -1,12 +1,20 @@
+use rand::Rng;
 use std::collections::HashSet;
 pub use std::time::Instant;
 
-use rand::Rng;
 #[macro_export]
 macro_rules! dbg_println {
     // `()` indicates that the macro takes no argument.
     ($($arg:tt)*) => {
         if DEBUG { println!($($arg)*) }
+    };
+}
+
+#[macro_export]
+macro_rules! cond_println{
+    // `()` indicates that the macro takes no argument.
+    ($($arg:tt)*) => {
+        if print { println!($($arg)*) }
     };
 }
 

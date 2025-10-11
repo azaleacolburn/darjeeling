@@ -19,11 +19,13 @@ pub trait NeuralNetwork {
         name: &str,
         target_err_percent: f32,
         write: bool,
+        print: bool,
     ) -> Result<(Option<String>, f32, f32), DarjeelingError>;
 
     fn test(
         &mut self,
         data: &Box<[Series]>,
         categories: Box<[String]>,
+        print: bool,
     ) -> Result<Vec<String>, DarjeelingError>;
 }

@@ -204,7 +204,7 @@ If you want to contribute, check the todo or issues list, fork the code, and mak
 - Be kind, respectful, and patient.
 - Don't be an "AI Bro"
 
-# [Contact Me](azaleacolburn@gmail.com)
+# Contact Me (azaleacolburn@gmail.com)
 
 # TODO:
 

@@ -5,7 +5,7 @@ use std::{
 };
 
 use crate::{
-    activation::ActivationFunction, categorize::CatNetwork, dbg_println, generation::GenNetwork,
+    activation::ActivationFunction, categorize::CatNetwork, dbg_println,
     neural_network::NeuralNetwork, series::Series, DEBUG,
 };
 
@@ -19,7 +19,7 @@ use crate::{
 
 #[test]
 pub fn train_test_xor() {
-    let learning_rate = 0.5;
+    let learning_rate = 0.05;
     let categories: Box<[String]> = vec!["1".to_string(), "0".to_string()].into_boxed_slice();
     let mut data: Box<[Series]> = xor_file();
 
@@ -28,7 +28,7 @@ pub fn train_test_xor() {
     data.iter_mut().for_each(|input| {
         input.answer = String::new();
     });
-    model.test(&data, categories).unwrap();
+    model.test(&data, categories, true).unwrap();
 }
 
 /// Returns None if the learn function returns an Err variant
@@ -40,7 +40,7 @@ fn train_network_xor(
     let input_num = 2;
     let hidden_num = 2;
     let answer_num = 2;
-    let hidden_layers = 2;
+    let hidden_layers = 1;
     let mut net = CatNetwork::new(
         input_num,
         hidden_num,
@@ -49,7 +49,7 @@ fn train_network_xor(
         Some(ActivationFunction::Sigmoid),
     );
 
-    net.train(&data, categories, learning_rate, "xor", 99.0, true)
+    net.train(&data, categories, learning_rate, "xor", 99.0, true, true)
         .expect("Failed to train xor network");
     net
 }
@@ -72,15 +72,12 @@ pub fn xor_file<'a>() -> Box<[Series]> {
 
         let init_inputs: Vec<&str> = line.split(";").collect();
         // Confused about how this is supposed to work
-        let float_inputs: Vec<f32> = vec![
-            init_inputs[0].split(" ").collect::<Vec<&str>>()[0]
-                .parse()
-                .unwrap(),
-            init_inputs[0].split(" ").collect::<Vec<&str>>()[1]
-                .parse()
-                .unwrap(),
-        ];
-        let answer_inputs = String::from(init_inputs[init_inputs.len() - 1]); // TODO: Figure out what should be the row's answer; the last of a line for
+        let float_inputs: Vec<f32> = init_inputs[0]
+            .split(" ")
+            .map(|n| n.parse().unwrap())
+            .collect::<Vec<f32>>();
+
+        let answer_inputs = String::from(init_inputs[1]);
         let input = Series::new(float_inputs, answer_inputs);
         inputs.push(input);
     }
@@ -96,7 +93,7 @@ pub fn xor_file<'a>() -> Box<[Series]> {
 
 #[test]
 fn train_test_digits() {
-    let learning_rate: f32 = 0.01;
+    let learning_rate: f32 = 0.07;
     let categories: Box<[String]> = vec!["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
         .into_iter()
         .map(|n| n.to_string())
@@ -105,7 +102,7 @@ fn train_test_digits() {
 
     let mut model = train_network_digits(data.clone(), categories.clone(), learning_rate);
 
-    model.test(&data, categories).unwrap();
+    model.test(&data, categories, true).unwrap();
 }
 
 /// # Panics
@@ -115,9 +112,9 @@ fn train_network_digits(
     categories: Box<[String]>,
     learning_rate: f32,
 ) -> CatNetwork {
-    let mut net = CatNetwork::new(64, 128, 10, 2, Some(ActivationFunction::Sigmoid));
+    let mut net = CatNetwork::new(64, 24, 10, 1, Some(ActivationFunction::Sigmoid));
 
-    net.train(&data, categories, learning_rate, "digits", 99.0, true)
+    net.train(&data, categories, learning_rate, "digits", 99.0, true, true)
         .expect("Training Digits Network Failed");
     net
 }
@@ -125,7 +122,7 @@ fn train_network_digits(
 fn digits_file() -> Box<[Series]> {
     let file = match fs::File::open("training_data/train-digits.txt") {
         Ok(file) => file,
-        Err(error) => panic!("Panic opening the file: {:?}", error),
+        Err(error) => panic!("Failed to open mnist digits file: {:?}", error),
     };
 
     let reader = BufReader::new(file);
@@ -157,54 +154,54 @@ fn digits_file() -> Box<[Series]> {
     inputs.into_boxed_slice()
 }
 
-#[test]
-fn train_test_gen() {
-    let model_name = train_gen();
-    let data = gen_data_file();
-    let mut model = GenNetwork::read_model(model_name).unwrap();
-    let output = model.test(&data).unwrap();
-    println!("{:?}", output);
-}
-
-fn train_gen() -> String {
-    let inputs = gen_data_file();
-    let mut net = GenNetwork::new(8, 8, 8, 1, Some(ActivationFunction::Sigmoid));
-    net.train(
-        &inputs,
-        1.0,
-        "dummy_gen",
-        100,
-        0.5,
-        8,
-        1,
-        ActivationFunction::Sigmoid,
-        99.0,
-    )
-    .unwrap()
-}
-
-/// Read the file you want to and format it as Inputs
-pub fn gen_data_file<'a>() -> Box<[Box<[f32]>]> {
-    let file = match fs::File::open("training_data/train-digits.txt") {
-        Ok(file) => file,
-        Err(error) => panic!("Panic opening the file: {:?}", error),
-    };
-
-    let reader = BufReader::new(file);
-    let mut inputs: Vec<Box<[f32]>> = vec![];
-
-    for l in reader.lines() {
-        let line: String = match l {
-            Ok(line) => line,
-            Err(error) => panic!("{:?}", error),
-        };
-
-        let init_inputs: Vec<&str> = line.split(",").collect();
-        let mut float_inputs: Vec<f32> = vec![];
-        for i in 0..init_inputs.len() {
-            float_inputs.push(init_inputs[i].parse().unwrap());
-        }
-        inputs.push(float_inputs.into_boxed_slice());
-    }
-    inputs.into_boxed_slice()
-}
+// #[test]
+// fn train_test_gen() {
+//     let model_name = train_gen();
+//     let data = gen_data_file();
+//     let mut model = GenNetwork::read_model(model_name).unwrap();
+//     let output = model.test(&data).unwrap();
+//     println!("{:?}", output);
+// }
+//
+// fn train_gen() -> String {
+//     let inputs = gen_data_file();
+//     let mut net = GenNetwork::new(8, 8, 8, 1, Some(ActivationFunction::Sigmoid));
+//     net.train(
+//         &inputs,
+//         1.0,
+//         "dummy_gen",
+//         100,
+//         0.5,
+//         8,
+//         1,
+//         ActivationFunction::Sigmoid,
+//         99.0,
+//     )
+//     .unwrap()
+// }
+//
+// /// Read the file you want to and format it as Inputs
+// pub fn gen_data_file<'a>() -> Box<[Box<[f32]>]> {
+//     let file = match fs::File::open("training_data/train-digits.txt") {
+//         Ok(file) => file,
+//         Err(error) => panic!("Panic opening the file: {:?}", error),
+//     };
+//
+//     let reader = BufReader::new(file);
+//     let mut inputs: Vec<Box<[f32]>> = vec![];
+//
+//     for l in reader.lines() {
+//         let line: String = match l {
+//             Ok(line) => line,
+//             Err(error) => panic!("{:?}", error),
+//         };
+//
+//         let init_inputs: Vec<&str> = line.split(",").collect();
+//         let mut float_inputs: Vec<f32> = vec![];
+//         for i in 0..init_inputs.len() {
+//             float_inputs.push(init_inputs[i].parse().unwrap());
+//         }
+//         inputs.push(float_inputs.into_boxed_slice());
+//     }
+//     inputs.into_boxed_slice()
+// }

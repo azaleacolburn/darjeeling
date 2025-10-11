@@ -1,8 +1,8 @@
 use crate::{
-    activation::ActivationFunction, bench, dbg_println, error::DarjeelingError,
+    activation::ActivationFunction, bench, cond_println, dbg_println, error::DarjeelingError,
     neural_network::NeuralNetwork, node::Node, series::Series, utils::RandomIter, DEBUG,
 };
-use rand::Rng;
+use rand::{rngs::ThreadRng, Rng};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -15,6 +15,13 @@ use std::{
 pub struct CatNetwork {
     node_array: Box<[Box<[Node]>]>,
     activation_function: Option<ActivationFunction>,
+}
+
+fn generate_layer(layer_size: usize, prev_layer_size: usize) -> Box<[Node]> {
+    (0..layer_size)
+        .into_iter()
+        .map(|_| Node::new(prev_layer_size))
+        .collect::<Box<[Node]>>()
 }
 
 impl NeuralNetwork for CatNetwork {
@@ -50,47 +57,21 @@ impl NeuralNetwork for CatNetwork {
         activation_function: Option<ActivationFunction>,
     ) -> CatNetwork {
         // links point backwards to previous layer
-        let mut rng = rand::thread_rng();
+        let mut node_array: Vec<Box<[Node]>> = Vec::with_capacity(2 + hidden_layers);
 
-        let mut node_array: Vec<Box<[Node]>> = vec![];
+        let input_layer = generate_layer(input_nodes, 0); // might need to be 1
+        node_array.push(input_layer);
 
-        let input_row: Box<[Node]> = (0..input_nodes)
-            .map(|_| Node::new(vec![].into_boxed_slice(), 1.0))
-            .collect::<Box<[Node]>>();
-        node_array.push(input_row);
-
-        // links point backwards, so the first layer has a different number of them
-        let first_hidden_layer = (0..hidden_nodes)
-            .into_iter()
-            .map(|_| {
-                Node::new(
-                    vec![rng.gen_range(-0.5..0.5); input_nodes].into_boxed_slice(),
-                    rng.gen_range(-0.5..0.5),
-                )
-            })
-            .collect();
+        // links point backwards, so the first hidden layer has a different number of them
+        let first_hidden_layer = generate_layer(hidden_nodes, input_nodes);
         node_array.push(first_hidden_layer);
 
-        // includes the answer node
         for _ in 1..hidden_layers {
-            let hidden_vec: Box<[Node]> = (0..hidden_nodes)
-                .into_iter()
-                .map(|_| 
-                    Node::new(
-                        vec![rng.gen_range(-0.5..0.5); hidden_nodes].into_boxed_slice(),
-                        rng.gen_range(-0.5..0.5),
-                    )
-                )
-                .collect();
+            let hidden_vec: Box<[Node]> = generate_layer(hidden_nodes, hidden_nodes);
             node_array.push(hidden_vec);
         }
 
-        let answer_layer = (0..answer_nodes)
-            .into_iter()
-            .map(|_| Node::new(
-                vec![rng.gen_range(-0.5..0.5); hidden_nodes].into_boxed_slice(),
-                rng.gen_range(-0.5..0.5))).collect();
-
+        let answer_layer = generate_layer(answer_nodes, hidden_nodes);
         node_array.push(answer_layer);
 
         CatNetwork {
@@ -130,7 +111,7 @@ impl NeuralNetwork for CatNetwork {
     ///
     /// Make an issue on the [darjeeling](https://github.com/Ewie21/darjeeling) github page
     ///
-    /// Or contact me at elocolburn@comcast.net
+    /// Or contact me at azaleacolburn@gmail.com
     ///
     /// ## Examples
     /// ```ignore
@@ -164,6 +145,7 @@ impl NeuralNetwork for CatNetwork {
         name: &str,
         target_err_percent: f32,
         write: bool,
+        print: bool,
     ) -> Result<(Option<String>, f32, f32), DarjeelingError> {
         let activation_function = match self.activation_function {
             Some(s) => s,
@@ -182,40 +164,35 @@ impl NeuralNetwork for CatNetwork {
         while err_percent < target_err_percent {
             count = 0.0;
             sum = 0.0;
-            err_percent = 0.00;
 
             let data_iter = RandomIter::new(data);
             for series in data_iter {
-                //dbg_println!("Training Checkpoint One Passed");
+                dbg_println!("Training Checkpoint One Passed");
 
-                //dbg_println!("Assign");
+                dbg_println!("Assign");
                 self.assign_answers(series);
 
-                //dbg_println!("Push");
+                dbg_println!("Push");
                 self.push_downstream(series, activation_function);
 
-                //dbg_println!("Sum: {:?} Count: {:?}", sum, count);
+                dbg_println!("Sum: {:?} Count: {:?}", sum, count);
+                dbg_println!("Analysis");
+                if print {
+                    self.self_analysis(&mut Some(epochs), &mut sum, &mut count, series, &mut mse);
+                }
 
-                //dbg_println!("Analysis");
-                self.self_analysis(
-                    &mut Some(epochs),
-                    &mut sum,
-                    &mut count,
-                    series,
-                    &mut mse,
-                );
+                dbg_println!("Sum: {:?} Count: {:?}", sum, count);
 
-                //dbg_println!("Sum: {:?} Count: {:?}", sum, count);
-
-                //dbg_println!("Backpropogate");
+                dbg_println!("Backpropogate");
                 self.backpropogate(learning_rate, activation_function);
             }
 
-            // let _old_err_percent = err_percent;
             err_percent = (sum / count) * 100.0;
             epochs += 1.0;
-            println!("Epoch: {:?}", epochs);
-            println!("Training Accuracy: {:?}", err_percent);
+            if print {
+                println!("Epoch: {:?}", epochs);
+                println!("Training Accuracy: {:?}", err_percent);
+            }
             //if err_percent - old_err_percent < 0.00000001 { break; }
         }
         let mut model_name: Option<String> = None;
@@ -223,7 +200,9 @@ impl NeuralNetwork for CatNetwork {
             model_name = Some(self.write_model(&name)?);
         }
 
-        println!("Training: Finished with accuracy of {:?}/{:?} or {:?} percent after {:?} epochs\nmse: {}", sum, count, err_percent, epochs, mse);
+        if print {
+            println!("Training: Finished with accuracy of {:?}/{:?} or {:?} percent after {:?} epochs\nmse: {}", sum, count, err_percent, epochs, mse);
+        }
 
         Ok((model_name, err_percent, mse))
     }
@@ -233,6 +212,7 @@ impl NeuralNetwork for CatNetwork {
         &mut self,
         data: &Box<[Series]>,
         categories: Box<[String]>,
+        print: bool,
     ) -> Result<Vec<String>, DarjeelingError> {
         let mut sum = 0.0;
         let mut count = 0.0;
@@ -259,51 +239,57 @@ impl NeuralNetwork for CatNetwork {
 
             dbg_println!("Sum: {:?} Count: {:?}", sum, count);
 
-            println!("Correct answer: {:?}", series.answer)
+            if print {
+                println!("Correct answer: {:?}", series.answer)
+            }
         });
 
-        // let _old_err_percent = err_percent;
         let err_percent: f32 = (sum / count) * 100.0;
         mse /= count;
-        println!(
-            "Testing: Finished with accuracy of {:?}/{:?} or {:?} percent\nMSE: {}",
-            sum, count, err_percent, mse
-        );
+        if print {
+            println!(
+                "Testing: Finished with accuracy of {:?}/{:?} or {:?} percent\nMSE: {}",
+                sum, count, err_percent, mse
+            );
+        }
 
         Ok(answers)
     }
 }
 
 impl CatNetwork {
-    /// Assigns categories to answer nodes based on a list of given categories
-    fn categorize(&mut self, categories: Box<[String]>) {
+    fn answer_layer(&mut self) -> &mut Box<[Node]> {
         self.node_array
             .last_mut()
             .expect("Network has no answer layer")
+    }
+    /// Assigns categories to answer nodes based on a list of given categories
+    fn categorize(&mut self, categories: Box<[String]>) {
+        self.answer_layer()
             .iter_mut()
             .enumerate()
             .for_each(|(i, node)| node.category = Some(categories[i].clone()));
     }
 
     fn assign_answers(&mut self, input: &Series) {
-        self.node_array
-            .last_mut()
-            .expect("Network has no answer layer")
-            .iter_mut()
-            .for_each(|node| {
-                node.correct_answer = if node.category.clone().unwrap() == input.answer {
-                    Some(1.0)
-                } else {
-                    Some(0.0)
-                }
-            });
+        self.answer_layer().iter_mut().for_each(|node| {
+            node.correct_answer = if node.category.clone().unwrap() == input.answer {
+                Some(1.0)
+            } else {
+                Some(0.0)
+            }
+        });
     }
 
     /// Passes in data to the sensors, pushs data 'downstream' through the network
     fn push_downstream(&mut self, data: &Series, activation_function: ActivationFunction) {
         // Pass data to the input layer
-        self.node_array.first_mut().expect("Neural Network has no layers")
-            .iter_mut().enumerate().for_each(|(i, node)| {
+        self.node_array
+            .first_mut()
+            .expect("Neural Network has no layers")
+            .iter_mut()
+            .enumerate()
+            .for_each(|(i, node)| {
                 node.cached_output = Some(data.data[i]);
             });
 
@@ -326,7 +312,7 @@ impl CatNetwork {
                     .iter()
                     .enumerate()
                     .for_each(|(prev_node_i, prev_output)| {
-                        node.link_vals[prev_node_i] = *prev_output;
+                        node.links[prev_node_i].value = *prev_output;
                         node.cached_output = Some(node.output(activation_function));
                     });
             });
@@ -422,56 +408,75 @@ impl CatNetwork {
     fn backpropogate(&mut self, learning_rate: f32, activation_function: ActivationFunction) {
         let hidden_layers = self.node_array.len() - 2;
 
-        self.node_array
-            .last_mut()
-            .expect("Network has no layers")
-            .iter_mut()
-            .for_each(|node|{ node.compute_answer_err_sig(activation_function);});
+        self.answer_layer().iter_mut().for_each(|node| {
+            node.compute_answer_err_sig(activation_function);
+        });
 
         self.adjust_hidden_weights(learning_rate, hidden_layers);
 
-        self.node_array
-            .last_mut()
-            .expect("Network has no layers")
-            .iter_mut()
-            .for_each(|node| {node.adjust_weights(learning_rate);});
+        self.answer_layer().iter_mut().for_each(|node| {
+            node.adjust_weights(learning_rate);
+        });
+    }
+
+    // Modifies the error signal
+    fn compute_hidden_node_err_signal(
+        hidden_layer: &mut Box<[Node]>,
+        node: usize,
+        next_layer: &Box<[Node]>,
+    ) {
+        hidden_layer[node].err_sig = Some(0.0);
+        // link weights, err sigs
+        let next_layer_eval: Box<[(f32, f32)]> = next_layer
+            .iter()
+            .map(|next_node| {
+                (
+                    next_node.links[node].weight,
+                    next_node.err_sig.unwrap_or(0.00),
+                )
+            })
+            .collect();
+
+        let err_sum: f32 = next_layer_eval
+            .iter()
+            .map(|(next_weight, err_sig)| {
+                // This changes based on the activation function
+                let product = err_sig * next_weight;
+
+                dbg_println!("next err sig {:?}", err_sig);
+                dbg_println!("next weight {:?}", next_weight);
+
+                product
+            })
+            .sum();
+
+        let hidden_result = hidden_layer[node].cached_output.unwrap();
+        // TODO: This is contains the derivative and changes based on the activation function
+        hidden_layer[node].err_sig = Some(err_sum * hidden_result * (1.0 - hidden_result));
+    }
+
+    fn adjust_hidden_layer_weight(&mut self, hidden_layer_number: usize, learning_rate: f32) {
+        let next_layer = self.node_array[hidden_layer_number + 1].clone();
+        let hidden_layer = &mut self.node_array[hidden_layer_number];
+
+        for node in 0..hidden_layer.len() {
+            CatNetwork::compute_hidden_node_err_signal(hidden_layer, node, &next_layer);
+
+            dbg_println!(
+                "New hidden errsig multiply: {:?}",
+                hidden_layer[node].err_sig
+            );
+            dbg_println!("\nLayer: {:?}", hidden_layer);
+            dbg_println!("Node: {:?}", node);
+
+            hidden_layer[node].adjust_weights(learning_rate);
+        }
     }
 
     /// Adjusts the weights of all the hidden neurons in a network
     fn adjust_hidden_weights(&mut self, learning_rate: f32, hidden_layers: usize) {
-        for layer in 1..=hidden_layers {
-            for node in 0..self.node_array[layer].len() {
-                self.node_array[layer][node].err_sig = Some(0.0);
-                // link weights, err sigs
-                let mut next_layer: Box<[(f32, f32)]> = self.node_array[layer + 1]
-                    .iter()
-                    .map(|next_node| {
-                        (
-                            next_node.link_weights[node],
-                            next_node.err_sig.unwrap_or(0.00),
-                        )
-                    })
-                    .collect();
-
-                next_layer.iter_mut().for_each(|(next_weight, err_sig)| {
-                    // This changes based on the activation function
-                    self.node_array[layer][node].err_sig =
-                        Some(*err_sig + (*err_sig * *next_weight));
-
-                    dbg_println!("next err sig {:?}", err_sig);
-                    dbg_println!("next weight {:?}", next_weight);
-                });
-
-                let hidden_result = self.node_array[layer][node].cached_output.unwrap();
-                // TODO: This is contains the derivative and changes based on the activation function
-                self.node_array[layer][node].err_sig = Some(self.node_array[layer][node].err_sig.unwrap() * hidden_result * (1.0 - hidden_result));
-
-                dbg_println!("New hidden errsig multiply: {:?}", self.node_array[layer][node].err_sig);
-                dbg_println!("\nLayer: {:?}", layer);
-                dbg_println!("Node: {:?}", node);
-
-                self.node_array[layer][node].adjust_weights(learning_rate);
-            }
+        for hidden_layer in 1..=hidden_layers {
+            self.adjust_hidden_layer_weight(hidden_layer, learning_rate);
         }
     }
 
