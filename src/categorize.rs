@@ -173,7 +173,7 @@ impl NeuralNetwork for CatNetwork {
                 self.assign_answers(series);
 
                 dbg_println!("Push");
-                self.push_downstream(series, activation_function);
+                self.feedforward_pass(series, activation_function);
 
                 dbg_println!("Sum: {:?} Count: {:?}", sum, count);
                 dbg_println!("Analysis");
@@ -229,7 +229,7 @@ impl NeuralNetwork for CatNetwork {
 
         data.iter().for_each(|series| {
             dbg_println!("Testing Checkpoint One Passed");
-            self.push_downstream(series, activation_function);
+            self.feedforward_pass(series, activation_function);
             dbg_println!("Sum: {:?} Count: {:?}", sum, count);
             answers.push(
                 self.self_analysis(&mut None, &mut sum, &mut count, series, &mut mse)
@@ -282,7 +282,7 @@ impl CatNetwork {
     }
 
     /// Passes in data to the sensors, pushs data 'downstream' through the network
-    fn push_downstream(&mut self, data: &Series, activation_function: ActivationFunction) {
+    fn feedforward_pass(&mut self, data: &Series, activation_function: ActivationFunction) {
         // Pass data to the input layer
         self.node_array
             .first_mut()

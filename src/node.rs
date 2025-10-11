@@ -35,11 +35,7 @@ impl Node {
 
     // Outputs the sum of all the link values times the link weights plus the bias for the neuron
     fn input(&mut self) -> f32 {
-        self.links
-            .iter()
-            .map(|link| link.weight * link.value)
-            .sum::<f32>()
-            + self.b_weight
+        self.links.iter().map(Link::evaluate).sum::<f32>() + self.b_weight
     }
 
     pub fn output(&mut self, activation: ActivationFunction) -> f32 {
@@ -88,6 +84,7 @@ impl Node {
         self.b_weight += err_sig * learning_rate;
         self.links
             .iter_mut()
+            // I thought link.value should be link.evaluate(), but ig I was wrong
             .for_each(|link| link.weight = link.weight + err_sig * link.value * learning_rate);
     }
 
