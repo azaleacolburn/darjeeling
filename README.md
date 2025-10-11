@@ -18,41 +18,42 @@ darjeeling = "0.3.5"
 
 1. Create a network
 
-```rust
+``` rust
     use darjeeling::{
-        categorize,
-        activation::ActivationFunction
+        activation::ActivationFunction,
+        categorize::CatNetwork,
+        neural_network::NeuralNetwork
     };
-    let input_num = 2;
-    let hidden_num = 2;
-    let answer_num = 2;
-    let hidden_layers = 1;
-    let mut net = categorize::NeuralNetwork::new(input_num, hidden_num, answer_num, hidden_layers, ActivationFunction::Sigmoid);
-    net.add_hidden_layer_with_size(2);
+    
+    let inputs: usize = 10;
+    let hidden: usize = 40;
+    let answer: usize = 2;
+    let hidden_layers: usize = 1;
+    let mut net = CatNetwork::new(inputs, hidden, answer, hidden_layers, Some(ActivationFunction::Sigmoid));
 ```
-
 You can also add hidden layers with a set number of neurons, since during initialization, all hidden layers must be the same size.
 
-2. Format your data as Inputs
+2. Format your data as a set of Series
 
 ```rust
     use darjeeling::{
-        types::Types,
-        input::Input
+        series::Series
     };
     // Do this for every input
-    let float_inputs: Vec<f32> = vec![];
-    let answer_input: Types = Types::String("Bee");
-    let input = Input::new(float_inputs, answer_input);
+    let float_inputs: Box<[Series]> = vec![0.0, 3.2, 4.2, 5.3, 663.3, 35.2];
+    let answer_input: = "Bee";
+    let input = Series::new(float_inputs, answer_input);
 ```
 
-Inputs represent a set of floating point numbers and which answer node they should be mapped to. For example, if the input is a picture of a Bee, the float_inputs might be the hex value of every pixel, while the answer input might be "Bee". Make sure the answer is always a valid category.
+A Series represents a single data point:
+- A set of floating point numbers and which is their correct answer.
+For example, if the input is a picture of a Bee, the float_inputs might be the hex value of every pixel, while the answer input might be "Bee". Make sure the answer is always a valid category.
 
 3. Train your network
 
 ```rust
     let learning_rate: f32 = 3.0;
-    let categories: Vec<Types> = categories_str_format(vec!["Bee","3"]);
+    let categories: Vec<> = vec!["Bee", "3"];
     let data: Vec<Input> = data_fmt();
     let target_err_percent = 95.0;
     match net.learn(&mut data, categories, learning_rate, "bees3s", target_err_percent) {
@@ -126,33 +127,6 @@ Different problems work differently with different learning rates, although I re
             Ok((model_name, _err_percent, _mse)) => Some(model_name),
             Err(_err) => None
         }
-    }
-
-    // This isn't very important, this just reads the file you want to and format it as Inputs
-    fn xor_file() -> Vec<Input> {
-        let file = match fs::File::open("training_data/xor.txt") {
-            Ok(file) => file,
-            Err(error) => panic!("Panic opening the file: {:?}", error)
-        };
-
-        let reader = BufReader::new(file);
-        let mut inputs: Vec<Input> = vec![];
-
-        for l in reader.lines() {
-
-            let line = match l {
-                Ok(line) => line,
-                Err(error) => panic!("{:?}", error)
-            };
-
-            let init_inputs: Vec<&str> = line.split(";").collect();
-            let float_inputs: Vec<f32> = vec![init_inputs[0].split(" ").collect::<Vec<&str>>()[0].parse().unwrap(), init_inputs[0].split(" ").collect::<Vec<&str>>()[1].parse().unwrap()];
-
-            let input: Input = Input { inputs: float_inputs, answer:init_inputs.get(init_inputs.len()-1).as_ref().unwrap().to_owned().to_string() };
-            inputs.push(input);
-        }
-
-    inputs
     }
 ```
 

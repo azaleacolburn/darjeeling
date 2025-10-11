@@ -14,7 +14,7 @@ pub trait NeuralNetwork {
     fn train(
         &mut self,
         data: &Box<[Series]>,
-        categories: Box<[String]>,
+        categories: Box<[impl ToString]>,
         learning_rate: f32,
         name: &str,
         target_err_percent: f32,
@@ -25,7 +25,7 @@ pub trait NeuralNetwork {
     fn test(
         &mut self,
         data: &Box<[Series]>,
-        categories: Box<[String]>,
+        categories: Box<[impl ToString]>,
         print: bool,
     ) -> Result<Vec<String>, DarjeelingError>;
 }

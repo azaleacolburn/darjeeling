@@ -10,6 +10,12 @@ use std::{
     fs,
 };
 
+pub struct TrainingResult {
+    mean_squared_error: f32,
+    final_error_percent: f32,
+    model_name: Option<String>,
+}
+
 /// The categorization Neural Network struct
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CatNetwork {
@@ -30,24 +36,25 @@ impl NeuralNetwork for CatNetwork {
     /// Initializes random starting link and bias weights between -.5 and .5
     ///
     /// ## Params
-    /// - Inputs: The number of sensors in the input layer
-    /// - Hidden: The number of hidden nodes per hidden layer
-    /// - Answer: The number of answer nodes, or possible categories
-    /// - Hidden Layers: The number of different hidden layers
-    /// - Activation Function: Which activation function is used by the network. This can be changed layer with the [`set_activation_func`](fn@set_activation_func) method.
+    /// - inputs: The number of sensors in the input layer
+    /// - hidden: The number of hidden nodes per hidden layer
+    /// - answer: The number of answer nodes, or possible categories
+    /// - hidden_layers: The number of different hidden layers
+    /// - activation_function: Which activation function is used by the network. This can be changed layer with the [`set_activation_func`](fn@set_activation_func) method.
     ///
     /// ## Examples
     /// ``` rust
     /// use darjeeling::{
     ///     activation::ActivationFunction,
-    ///     categorize::CatNetwork
+    ///     categorize::CatNetwork,
+    ///     neural_network::NeuralNetwork
     /// };
     ///
     /// let inputs: usize = 10;
     /// let hidden: usize = 40;
     /// let answer: usize = 2;
     /// let hidden_layers: usize = 1;
-    /// let mut net = CatNetwork::new(inputs, hidden, answer, hidden_layers, ActivationFunction::Sigmoid);
+    /// let mut net = CatNetwork::new(inputs, hidden, answer, hidden_layers, Some(ActivationFunction::Sigmoid));
     /// ```
     fn new(
         input_nodes: usize,
@@ -61,7 +68,6 @@ impl NeuralNetwork for CatNetwork {
 
         let input_layer = generate_layer(input_nodes, 0); // might need to be 1
         node_array.push(input_layer);
-
         // links point backwards, so the first hidden layer has a different number of them
         let first_hidden_layer = generate_layer(hidden_nodes, input_nodes);
         node_array.push(first_hidden_layer);
@@ -88,25 +94,31 @@ impl NeuralNetwork for CatNetwork {
     /// The number of answer nodes should be the same of the number of categories
     /// - Learning Rate: The modifier that is applied to link weights as they're adjusted.
     /// Try fiddling with this one, but -1.5 - 1.5 is recommended to start.
-    /// - Name: The name of the network
-    /// - Target Error Percent: The error percent at which the network will be stop training, checked at the begining of each new epoch.
-    /// - Write: True of you want to write the model to a file, false otherwise
+    /// - `name`: The name of the network
+    /// - `target` Error Percent: The error percent at which the network will be stop training, checked at the begining of each new epoch.
+    /// - `write`: `true` of you want to write the model to a file, false otherwise
+    /// - `print`: `true` of you want to print the training output (an accuracy report every epoch and a
+    /// propogation analysis every 10th epoch)
     ///
     /// ## Returns
-    /// The fallible:
+    /// On success:
+    /// A `TrainingResult` structure containing:
     /// - name of the model that this neural network trained(the name parameter with a random u32 appended)
     /// some if write is true, none is write is false
     /// - the error percentage of the last epoch
     /// - the mse of the training
+    /// On failure:
+    /// - One of the `DarjeelingError`s listed below
     ///
-    /// ## Err
-    /// - ### WriteModelFailed
+    /// ## Potential Errors
+    /// ### WriteModelFailed
     /// There was a problem when saving the model to a file
-    /// - ### ModelNameAlreadyExists
-    /// The random model name chosen already exists
     ///
-    /// Change the name or retrain
-    /// - ### UnknownError
+    /// ### ModelNameAlreadyExists
+    /// The random model name chosen already exists
+    /// Try: Changing the name or retraining
+    ///
+    /// ### UnknownError
     /// Not sure what happened, but something failed
     ///
     /// Make an issue on the [darjeeling](https://github.com/Ewie21/darjeeling) github page
@@ -114,14 +126,17 @@ impl NeuralNetwork for CatNetwork {
     /// Or contact me at azaleacolburn@gmail.com
     ///
     /// ## Examples
-    /// ```ignore
+    /// ```
     /// use darjeeling::{
-    /// categorize::CatNetwork,
-    /// activation::ActivationFunction,
-    /// input::Input,
-    /// // This file may not be avaliable
-    /// // Everything found here will be hyper-specific to your project.
-    /// tests::{categories_str_format, xor_file}
+    ///     categorize::CatNetwork,
+    ///     neural_network::NeuralNetwork,
+    ///     activation::ActivationFunction,
+    ///     series::Series,
+    ///     // WARNING
+    ///     // This file will not be avaliable to you
+    ///     // (and if it is you shouldn't use it except for testing)
+    ///     // All of your cagetories and file loading will be hyper-specific to your project.
+    ///     utils::xor_file
     /// };
     ///
     /// // A file containing all possible inputs and correct outputs still needs to be make by you
@@ -131,16 +146,28 @@ impl NeuralNetwork for CatNetwork {
     /// // 1 1;0
     /// // You also need to write the file input function
     /// // Automatic file reading and formatting function coming soon
-    /// let categories: Vec<String> = categories_str_format(vec!["0", "1"]);
-    /// let mut data: Vec<Input> = xor_file();
-    /// let mut net = CatNetwork::new(2, 2, 2, 1, ActivationFunction::Sigmoid);
-    /// let learning_rate = 1.0;
-    /// let (model_name, error_percentage, mse) = net.train(&data, categories, learning_rate, "xor", 99.0, true).unwrap();
+    /// let learning_rate = 0.05;
+    /// let categories: Box<[&str]> = vec!["1", "0"].into_boxed_slice();
+    /// let mut data: Box<[Series]> = xor_file();
+    /// // Panics if unwraps a None value
+    /// let input_num = 2;
+    /// let hidden_num = 2;
+    /// let answer_num = 2;
+    /// let hidden_layers = 1;
+    /// let mut net = CatNetwork::new(
+    ///     input_num,
+    ///     hidden_num,
+    ///     answer_num,
+    ///     hidden_layers,
+    ///     Some(ActivationFunction::Sigmoid),
+    /// );
+    /// let (name, error_percent, mse) = net.train(&data, categories, learning_rate, "xor", 99.0, true, true)
+    ///     .expect("Failed to train xor network");
     /// ```
     fn train(
         &mut self,
         data: &Box<[Series]>,
-        categories: Box<[String]>,
+        categories: Box<[impl ToString]>,
         learning_rate: f32,
         name: &str,
         target_err_percent: f32,
@@ -211,7 +238,7 @@ impl NeuralNetwork for CatNetwork {
     fn test(
         &mut self,
         data: &Box<[Series]>,
-        categories: Box<[String]>,
+        categories: Box<[impl ToString]>,
         print: bool,
     ) -> Result<Vec<String>, DarjeelingError> {
         let mut sum = 0.0;
@@ -264,11 +291,11 @@ impl CatNetwork {
             .expect("Network has no answer layer")
     }
     /// Assigns categories to answer nodes based on a list of given categories
-    fn categorize(&mut self, categories: Box<[String]>) {
+    fn categorize(&mut self, categories: Box<[impl ToString]>) {
         self.answer_layer()
             .iter_mut()
             .enumerate()
-            .for_each(|(i, node)| node.category = Some(categories[i].clone()));
+            .for_each(|(i, node)| node.category = Some(categories[i].to_string().clone()));
     }
 
     fn assign_answers(&mut self, input: &Series) {

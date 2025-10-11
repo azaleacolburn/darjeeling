@@ -10,4 +10,4 @@ pub mod node;
 pub mod series;
 #[cfg(test)]
 pub mod tests;
-mod utils;
+pub mod utils;

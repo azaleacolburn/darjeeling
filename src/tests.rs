@@ -5,8 +5,8 @@ use std::{
 };
 
 use crate::{
-    activation::ActivationFunction, categorize::CatNetwork, dbg_println,
-    neural_network::NeuralNetwork, series::Series, DEBUG,
+    activation::ActivationFunction, bench, categorize::CatNetwork, dbg_println,
+    neural_network::NeuralNetwork, series::Series, utils::xor_file, DEBUG,
 };
 
 // #[test]
@@ -20,11 +20,12 @@ use crate::{
 #[test]
 pub fn train_test_xor() {
     let learning_rate = 0.05;
-    let categories: Box<[String]> = vec!["1".to_string(), "0".to_string()].into_boxed_slice();
+    let categories: Box<[&str]> = vec!["1", "0"].into_boxed_slice();
     let mut data: Box<[Series]> = xor_file();
 
     // Panics if unwraps a None value
     let mut model = train_network_xor(data.clone(), categories.clone(), learning_rate);
+
     data.iter_mut().for_each(|input| {
         input.answer = String::new();
     });
@@ -34,7 +35,7 @@ pub fn train_test_xor() {
 /// Returns None if the learn function returns an Err variant
 fn train_network_xor(
     data: Box<[Series]>,
-    categories: Box<[String]>,
+    categories: Box<[impl ToString]>,
     learning_rate: f32,
 ) -> CatNetwork {
     let input_num = 2;
@@ -52,36 +53,6 @@ fn train_network_xor(
     net.train(&data, categories, learning_rate, "xor", 99.0, true, true)
         .expect("Failed to train xor network");
     net
-}
-
-/// Read the file you want to and format it as Inputs
-pub fn xor_file<'a>() -> Box<[Series]> {
-    let file = match fs::File::open("training_data/xor.txt") {
-        Ok(file) => file,
-        Err(error) => panic!("Panic opening the file: {:?}", error),
-    };
-
-    let reader = BufReader::new(file);
-    let mut inputs: Vec<Series> = vec![];
-
-    for l in reader.lines() {
-        let line: String = match l {
-            Ok(line) => line,
-            Err(error) => panic!("{:?}", error),
-        };
-
-        let init_inputs: Vec<&str> = line.split(";").collect();
-        // Confused about how this is supposed to work
-        let float_inputs: Vec<f32> = init_inputs[0]
-            .split(" ")
-            .map(|n| n.parse().unwrap())
-            .collect::<Vec<f32>>();
-
-        let answer_inputs = String::from(init_inputs[1]);
-        let input = Series::new(float_inputs, answer_inputs);
-        inputs.push(input);
-    }
-    inputs.into_boxed_slice()
 }
 
 // TODO: Wite predictive model training first

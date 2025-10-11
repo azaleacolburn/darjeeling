@@ -18,10 +18,9 @@ impl Series {
     /// # Examples
     /// This example is for one input into an XOR gate
     /// ```
-    /// use darjeeling::input::Series;
-    /// use darjeeling::types::Types;
+    /// use darjeeling::series::Series;
     /// let inputs = vec![0.0,1.0];
-    /// let answer = String::from("1")
+    /// let answer = String::from("1");
     /// let formated_input = Series::new(inputs, answer);
     /// ```
     pub fn new<T, U>(data: T, answer: U) -> Series

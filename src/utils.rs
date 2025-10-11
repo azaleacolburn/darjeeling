@@ -1,6 +1,12 @@
 use rand::Rng;
-use std::collections::HashSet;
 pub use std::time::Instant;
+use std::{
+    collections::HashSet,
+    fs,
+    io::{BufRead, BufReader},
+};
+
+use crate::series::Series;
 
 #[macro_export]
 macro_rules! dbg_println {
@@ -62,4 +68,35 @@ impl<'a, T> Iterator for RandomIter<'a, T> {
             }
         }
     }
+}
+
+/// Read the file you want to and format it as Inputs
+// In utils so it can be accessed by doctests
+pub fn xor_file<'a>() -> Box<[Series]> {
+    let file = match fs::File::open("training_data/xor.txt") {
+        Ok(file) => file,
+        Err(error) => panic!("Panic opening the file: {:?}", error),
+    };
+
+    let reader = BufReader::new(file);
+    let mut inputs: Vec<Series> = vec![];
+
+    for l in reader.lines() {
+        let line: String = match l {
+            Ok(line) => line,
+            Err(error) => panic!("{:?}", error),
+        };
+
+        let init_inputs: Vec<&str> = line.split(";").collect();
+        // Confused about how this is supposed to work
+        let float_inputs: Vec<f32> = init_inputs[0]
+            .split(" ")
+            .map(|n| n.parse().unwrap())
+            .collect::<Vec<f32>>();
+
+        let answer_inputs = String::from(init_inputs[1]);
+        let input = Series::new(float_inputs, answer_inputs);
+        inputs.push(input);
+    }
+    inputs.into_boxed_slice()
 }
