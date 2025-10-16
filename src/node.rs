@@ -1,4 +1,4 @@
-use crate::{activation::ActivationFunction, dbg_println, link::Link, DEBUG};
+use crate::{activation::ActivationFunction, link::Link};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 

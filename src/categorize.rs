@@ -1,13 +1,13 @@
 use crate::{
-    activation::ActivationFunction, bench, cond_println, dbg_println, error::DarjeelingError,
+    activation::ActivationFunction, dbg_println, error::DarjeelingError,
     neural_network::NeuralNetwork, node::Node, series::Series, utils::RandomIter, DEBUG,
 };
-use rand::{rngs::ThreadRng, Rng};
-use rayon::prelude::*;
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::{
     fmt::{self, Debug},
     fs,
+    time::Instant,
 };
 
 pub struct TrainingResult {
@@ -184,13 +184,15 @@ impl NeuralNetwork for CatNetwork {
         let mut count = 0.0;
         let mut err_percent = 0.0;
         let mut mse = 0.0;
+        let mut timestamp: Instant;
 
         dbg_println!("Categorize");
-        bench!(self.categorize(categories));
+        self.categorize(categories);
 
         while err_percent < target_err_percent {
             count = 0.0;
             sum = 0.0;
+            timestamp = std::time::Instant::now();
 
             let data_iter = RandomIter::new(data);
             for series in data_iter {
@@ -217,7 +219,9 @@ impl NeuralNetwork for CatNetwork {
             err_percent = (sum / count) * 100.0;
             epochs += 1.0;
             if print {
+                println!("-------------------------");
                 println!("Epoch: {:?}", epochs);
+                println!("Epoch Time: {:?} ms", timestamp.elapsed().as_millis());
                 println!("Training Accuracy: {:?}", err_percent);
             }
             //if err_percent - old_err_percent < 0.00000001 { break; }
@@ -380,7 +384,8 @@ impl CatNetwork {
         match epochs {
             Some(epochs) => {
                 // This won't happen during testing
-                if *epochs % 10.0 != 0.0 || *epochs == 0.0 {
+                if true {
+                    // *epochs % 10.0 != 0.0 || *epochs == 0.0 {
                     return (brightest_node.category.clone().unwrap(), None);
                 }
                 println!("\n-------------------------\n");

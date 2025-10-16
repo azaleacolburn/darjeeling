@@ -1,5 +1,5 @@
 use core::fmt;
-use std::{any::TypeId, error::Error};
+use std::any::TypeId;
 
 #[derive(Debug, Clone)]
 pub enum DarjeelingError {
