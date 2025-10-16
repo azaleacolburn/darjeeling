@@ -69,11 +69,12 @@ fn train_test_digits() {
         .into_iter()
         .map(|n| n.to_string())
         .collect();
-    let data: Box<[Series]> = digits_file();
+    let training_data: Box<[Series]> = read_digits_file("training_data/train-digits.txt");
+    let testing_data: Box<[Series]> = read_digits_file("testing_data/digits.txt");
 
-    let mut model = train_network_digits(data.clone(), categories.clone(), learning_rate);
+    let mut model = train_network_digits(training_data, categories.clone(), learning_rate);
 
-    model.test(&data, categories, true).unwrap();
+    model.test(&testing_data, categories, true).unwrap();
 }
 
 /// # Panics
@@ -90,8 +91,8 @@ fn train_network_digits(
     net
 }
 
-fn digits_file() -> Box<[Series]> {
-    let file = match fs::File::open("training_data/train-digits.txt") {
+fn read_digits_file(name: &str) -> Box<[Series]> {
+    let file = match fs::File::open(name) {
         Ok(file) => file,
         Err(error) => panic!("Failed to open mnist digits file: {:?}", error),
     };
