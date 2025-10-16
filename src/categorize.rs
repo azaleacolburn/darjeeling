@@ -1,7 +1,8 @@
 use crate::{
-    activation::ActivationFunction, dbg_println, error::DarjeelingError,
+    activation::ActivationFunction, dbg_println, error::DarjeelingError, layer::Layer,
     neural_network::NeuralNetwork, node::Node, series::Series, utils::RandomIter, DEBUG,
 };
+use ndarray::Array2;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -19,15 +20,8 @@ pub struct TrainingResult {
 /// The categorization Neural Network struct
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CatNetwork {
-    node_array: Box<[Box<[Node]>]>,
+    node_array: Box<[Layer]>,
     activation_function: Option<ActivationFunction>,
-}
-
-fn generate_layer(layer_size: usize, prev_layer_size: usize) -> Box<[Node]> {
-    (0..layer_size)
-        .into_iter()
-        .map(|_| Node::new(prev_layer_size))
-        .collect::<Box<[Node]>>()
 }
 
 impl NeuralNetwork for CatNetwork {
@@ -64,7 +58,7 @@ impl NeuralNetwork for CatNetwork {
         activation_function: Option<ActivationFunction>,
     ) -> CatNetwork {
         // links point backwards to previous layer
-        let mut node_array: Vec<Box<[Node]>> = Vec::with_capacity(2 + hidden_layers);
+        let mut node_array: Vec<Layer> = Vec::with_capacity(2 + hidden_layers);
 
         let input_layer = generate_layer(input_nodes, 0); // might need to be 1
         node_array.push(input_layer);
@@ -289,27 +283,32 @@ impl NeuralNetwork for CatNetwork {
 }
 
 impl CatNetwork {
-    fn answer_layer(&mut self) -> &mut Box<[Node]> {
+    fn answer_layer(&mut self) -> &mut Layer {
         self.node_array
             .last_mut()
             .expect("Network has no answer layer")
     }
     /// Assigns categories to answer nodes based on a list of given categories
     fn categorize(&mut self, categories: Box<[impl ToString]>) {
-        self.answer_layer()
-            .iter_mut()
-            .enumerate()
-            .for_each(|(i, node)| node.category = Some(categories[i].to_string().clone()));
+        self.answer_layer().categories = categories
+            .iter()
+            .map(|l| l.to_string())
+            .collect::<Vec<String>>()
+            .into_boxed_slice();
     }
 
     fn assign_answers(&mut self, input: &Series) {
-        self.answer_layer().iter_mut().for_each(|node| {
-            node.correct_answer = if node.category.clone().unwrap() == input.answer {
-                Some(1.0)
-            } else {
-                Some(0.0)
-            }
-        });
+        self.answer_layer()
+            .categories
+            .iter_mut()
+            .enumerate()
+            .for_each(|(i, category)| {
+                node.correct_answer = if node.category.clone().unwrap() == input.answer {
+                    Some(1.0)
+                } else {
+                    Some(0.0)
+                }
+            });
     }
 
     /// Passes in data to the sensors, pushs data 'downstream' through the network
