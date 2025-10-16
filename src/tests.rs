@@ -50,7 +50,7 @@ fn train_network_xor(
         Some(ActivationFunction::Sigmoid),
     );
 
-    net.train(&data, categories, learning_rate, "xor", 99.0, true, true)
+    net.train(&data, categories, learning_rate, "xor", 99.0, false, true)
         .expect("Failed to train xor network");
     net
 }
@@ -86,8 +86,16 @@ fn train_network_digits(
 ) -> CatNetwork {
     let mut net = CatNetwork::new(64, 24, 10, 1, Some(ActivationFunction::Sigmoid));
 
-    net.train(&data, categories, learning_rate, "digits", 99.0, true, true)
-        .expect("Training Digits Network Failed");
+    net.train(
+        &data,
+        categories,
+        learning_rate,
+        "digits",
+        99.0,
+        false,
+        true,
+    )
+    .expect("Training Digits Network Failed");
     net
 }
 
