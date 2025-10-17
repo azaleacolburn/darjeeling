@@ -2,6 +2,7 @@ use crate::{
     activation::ActivationFunction, dbg_println, error::DarjeelingError, layer::Layer,
     neural_network::NeuralNetwork, node::Node, series::Series, utils::RandomIter, DEBUG,
 };
+use ndarray::Array1;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -311,14 +312,15 @@ impl CatNetwork {
     fn feedforward_pass(&mut self, data: &Series, activation_function: fn(f32) -> f32) {
         // Pass data to the input layer
         let input_layer = self.input_layer();
-        input_layer.cached_outputs = data.data;
+        input_layer.cached_outputs = Array1::from_vec(data.data.to_vec());
 
         // Push forward hidden and output layers
         for layer_i in 1..self.layers.len() {
             // Clone the cached outputs from the previous layer
-            let prev_layer = self.layers[layer_i - 1];
-            let layer = &mut self.layers[layer_i];
-            layer.feedforward_layer(&prev_layer, activation_function);
+            let prev_layer = &self.layers[layer_i - 1];
+            let layer = &self.layers[layer_i];
+            self.layers[layer_i].cached_outputs =
+                layer.feedforward_layer(&prev_layer, activation_function);
         }
     }
 
@@ -332,21 +334,15 @@ impl CatNetwork {
         series: &Series,
         mse: &mut f32,
     ) -> (String, Option<f32>) {
-        dbg_println!("answer {}", self.node_array.len() - 1);
-        dbg_println!("largest index {}", self.largest_node());
+        dbg_println!("answer {}", self.layers.len() - 1);
         dbg_println!("{:?}", self);
 
-        let answer_layer = self.node_array.last().expect("Network has no layer");
-        let brightest_node: &Node = &answer_layer[self.largest_node()];
-        let brightness: f32 = brightest_node.cached_output.unwrap();
+        let answer_layer = self.layers.last().expect("Network has no layer");
+        let (brightness, category) = self.brightest_answer();
 
-        dbg_println!(
-            "Category: {:?} \nBrightness: {:?}",
-            brightest_node.category.as_ref().unwrap(),
-            brightness
-        );
+        dbg_println!("Category: {:?} \nBrightness: {:?}", category, brightness);
 
-        if brightest_node.category.clone().unwrap() == series.answer {
+        if category == series.answer {
             dbg_println!("Sum++");
             *sum += 1.0;
         }
@@ -358,28 +354,15 @@ impl CatNetwork {
                 // This won't happen during testing
                 if true {
                     // *epochs % 10.0 != 0.0 || *epochs == 0.0 {
-                    return (brightest_node.category.clone().unwrap(), None);
+                    return (category.to_string(), None);
                 }
                 println!("\n-------------------------\n");
                 println!("Epoch: {:?}", epochs);
-                println!(
-                    "Category: {:?} \nBrightness: {:?}",
-                    brightest_node.category.as_ref().unwrap(),
-                    brightness
-                );
-                if DEBUG {
-                    let dimest_node: &Node =
-                        &answer_layer[answer_layer.len() - self.largest_node() - 1];
-                    println!(
-                        "Chosen category: {:?} \nDimest Brightness: {:?}",
-                        dimest_node.category.as_ref().unwrap(),
-                        dimest_node.cached_output.unwrap()
-                    );
-                }
-                (brightest_node.category.clone().unwrap(), None)
+                println!("Category: {:?} \nBrightness: {:?}", category, brightness);
+                (category.to_string(), None)
             }
             None => (
-                brightest_node.category.clone().unwrap(),
+                category.to_string(),
                 Some(CatNetwork::calculate_err_for_generation_model(
                     mse,
                     brightest_node,
@@ -388,7 +371,7 @@ impl CatNetwork {
         }
     }
 
-    pub fn calculate_err_for_generation_model(mse: &mut f32, node: &Node) -> f32 {
+    pub fn calculate_err_for_generation_model(mse: &mut f32, brightness: f32, correct_brightness) -> f32 {
         *mse += f32::powi(
             node.correct_answer.unwrap() - node.cached_output.unwrap(),
             2,
@@ -397,20 +380,24 @@ impl CatNetwork {
     }
 
     /// Finds the index and the brightest node in an array and returns it
-    fn largest_node(&self) -> usize {
+    /// Returns the brightness and category
+    fn brightest_answer(&self) -> (f32, &str) {
         let mut largest_index = 0;
-        let answer_layer = self.node_array.last().expect("Network has no layers");
-        for (i, node) in answer_layer.iter().enumerate() {
-            if node.cached_output > answer_layer[largest_index].cached_output {
+        let answer_layer = self.layers.last().expect("Network has no layers");
+        for (i, output) in answer_layer.cached_outputs.iter().enumerate() {
+            if *output > answer_layer.cached_outputs[largest_index] {
                 largest_index = i;
             }
         }
 
-        largest_index
+        let brightness = answer_layer.cached_outputs[largest_index];
+        let category = &answer_layer.categories[largest_index];
+
+        (brightness, category)
     }
     /// Goes back through the network adjusting the weights of the all the neurons based on their error signal
     fn backpropogate(&mut self, learning_rate: f32, activation_function: fn(f32) -> f32) {
-        let hidden_layers = self.node_array.len() - 2;
+        let hidden_layers = self.layers.len() - 2;
 
         self.answer_layer().iter_mut().for_each(|node| {
             node.compute_answer_err_sig(activation_function);

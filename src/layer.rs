@@ -54,12 +54,12 @@ impl Layer {
     }
 
     pub fn feedforward_layer(
-        &mut self,
+        &self,
         previous_layer: &Layer,
         activation_function: fn(f32) -> f32,
-    ) {
-        self.cached_outputs = (self.cached_outputs.dot(&previous_layer.weights) + &self.biases)
-            .map(|n| activation_function(*n));
+    ) -> Array1<f32> {
+        (self.cached_outputs.dot(&previous_layer.weights) + &self.biases)
+            .map(|n| activation_function(*n))
     }
 }
 
