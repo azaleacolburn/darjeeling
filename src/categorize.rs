@@ -2,7 +2,6 @@ use crate::{
     activation::ActivationFunction, dbg_println, error::DarjeelingError, layer::Layer,
     neural_network::NeuralNetwork, node::Node, series::Series, utils::RandomIter, DEBUG,
 };
-use ndarray::Array2;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -20,7 +19,7 @@ pub struct TrainingResult {
 /// The categorization Neural Network struct
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CatNetwork {
-    node_array: Box<[Layer]>,
+    layers: Box<[Layer]>,
     activation_function: Option<ActivationFunction>,
 }
 
@@ -58,24 +57,24 @@ impl NeuralNetwork for CatNetwork {
         activation_function: Option<ActivationFunction>,
     ) -> CatNetwork {
         // links point backwards to previous layer
-        let mut node_array: Vec<Layer> = Vec::with_capacity(2 + hidden_layers);
+        let mut layers: Vec<Layer> = Vec::with_capacity(2 + hidden_layers);
 
-        let input_layer = generate_layer(input_nodes, 0); // might need to be 1
-        node_array.push(input_layer);
+        let input_layer = Layer::new_input_layer(input_nodes); // might need to be 1
+        layers.push(input_layer);
         // links point backwards, so the first hidden layer has a different number of them
-        let first_hidden_layer = generate_layer(hidden_nodes, input_nodes);
-        node_array.push(first_hidden_layer);
+        let first_hidden_layer = Layer::new_neuron_layer(hidden_nodes, input_nodes);
+        layers.push(first_hidden_layer);
 
         for _ in 1..hidden_layers {
-            let hidden_vec: Box<[Node]> = generate_layer(hidden_nodes, hidden_nodes);
-            node_array.push(hidden_vec);
+            let hidden_vec = Layer::new_neuron_layer(hidden_nodes, hidden_nodes);
+            layers.push(hidden_vec);
         }
 
-        let answer_layer = generate_layer(answer_nodes, hidden_nodes);
-        node_array.push(answer_layer);
+        let answer_layer = Layer::new_neuron_layer(answer_nodes, hidden_nodes);
+        layers.push(answer_layer);
 
         CatNetwork {
-            node_array: node_array.into_boxed_slice(),
+            layers: layers.into_boxed_slice(),
             activation_function,
         }
     }
@@ -172,6 +171,7 @@ impl NeuralNetwork for CatNetwork {
             Some(s) => s,
             None => return Err(DarjeelingError::ModelMissingActivationFunction),
         };
+        let activation_function = activation_function.to_function();
 
         let mut epochs = 0.0;
         let mut sum = 0.0;
@@ -249,7 +249,7 @@ impl NeuralNetwork for CatNetwork {
             Some(s) => s,
             None => return Err(DarjeelingError::ModelMissingActivationFunction),
         };
-
+        let activation_function = activation_function.to_function();
         self.categorize(categories);
 
         data.iter().for_each(|series| {
@@ -284,9 +284,10 @@ impl NeuralNetwork for CatNetwork {
 
 impl CatNetwork {
     fn answer_layer(&mut self) -> &mut Layer {
-        self.node_array
-            .last_mut()
-            .expect("Network has no answer layer")
+        self.layers.last_mut().expect("Network has no answer layer")
+    }
+    fn input_layer(&mut self) -> &mut Layer {
+        self.layers.first_mut().expect("Network has no input layer")
     }
     /// Assigns categories to answer nodes based on a list of given categories
     fn categorize(&mut self, categories: Box<[impl ToString]>) {
@@ -298,54 +299,26 @@ impl CatNetwork {
     }
 
     fn assign_answers(&mut self, input: &Series) {
-        self.answer_layer()
+        let answer_layer = self.answer_layer();
+        answer_layer.correct_answers = answer_layer
             .categories
             .iter_mut()
-            .enumerate()
-            .for_each(|(i, category)| {
-                node.correct_answer = if node.category.clone().unwrap() == input.answer {
-                    Some(1.0)
-                } else {
-                    Some(0.0)
-                }
-            });
+            .map(|category| (category.clone() == input.answer) as i32 as f32)
+            .collect();
     }
 
     /// Passes in data to the sensors, pushs data 'downstream' through the network
-    fn feedforward_pass(&mut self, data: &Series, activation_function: ActivationFunction) {
+    fn feedforward_pass(&mut self, data: &Series, activation_function: fn(f32) -> f32) {
         // Pass data to the input layer
-        self.node_array
-            .first_mut()
-            .expect("Neural Network has no layers")
-            .iter_mut()
-            .enumerate()
-            .for_each(|(i, node)| {
-                node.cached_output = Some(data.data[i]);
-            });
+        let input_layer = self.input_layer();
+        input_layer.cached_outputs = data.data;
 
         // Push forward hidden and output layers
-        for layer_i in 1..self.node_array.len() {
+        for layer_i in 1..self.layers.len() {
             // Clone the cached outputs from the previous layer
-            let prev_cached_outputs: Box<[f32]> = self.node_array[layer_i - 1]
-                .iter()
-                .map(|prev_node| {
-                    prev_node
-                        .cached_output
-                        .expect("Previous nodes do not have cached outputs")
-                })
-                .collect();
-
-            let layer = self.node_array[layer_i].iter_mut();
-
-            layer.for_each(|node| {
-                prev_cached_outputs
-                    .iter()
-                    .enumerate()
-                    .for_each(|(prev_node_i, prev_output)| {
-                        node.links[prev_node_i].value = *prev_output;
-                        node.cached_output = Some(node.output(activation_function));
-                    });
-            });
+            let prev_layer = self.layers[layer_i - 1];
+            let layer = &mut self.layers[layer_i];
+            layer.feedforward_layer(&prev_layer, activation_function);
         }
     }
 
@@ -436,7 +409,7 @@ impl CatNetwork {
         largest_index
     }
     /// Goes back through the network adjusting the weights of the all the neurons based on their error signal
-    fn backpropogate(&mut self, learning_rate: f32, activation_function: ActivationFunction) {
+    fn backpropogate(&mut self, learning_rate: f32, activation_function: fn(f32) -> f32) {
         let hidden_layers = self.node_array.len() - 2;
 
         self.answer_layer().iter_mut().for_each(|node| {
