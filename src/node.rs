@@ -47,23 +47,6 @@ impl Node {
         }
     }
 
-    pub fn compute_answer_err_sig(&mut self, activation: ActivationFunction) -> f32 {
-        let cached_output = self
-            .cached_output
-            .expect("Answer Node Missing Cached Output");
-
-        let slope: f32 = match activation {
-            // Sigmoid derivative functon where s(x) = cached_output
-            ActivationFunction::Sigmoid => cached_output * (1.0 - cached_output),
-            ActivationFunction::Linear => 2.0,
-            // Unsupported
-            ActivationFunction::Tanh => 1.0, //- unsafe { std::intrinsics::powf32(y, 2.0) };
-        };
-
-        self.err_sig = Some((self.correct_answer.unwrap() - cached_output) * slope);
-        self.err_sig.unwrap()
-    }
-
     // pub fn compute_answer_err_sig_gen(&mut self, mse: f32, activation: ActivationFunction) -> f32 {
     //     // This is where the derivative of the activation function goes I think
     //     let output = self
@@ -78,15 +61,6 @@ impl Node {
     //     dbg_println!("Err Signal Post: {:?}", self.err_sig.unwrap());
     //     self.err_sig.unwrap()
     // }
-
-    pub fn adjust_weights(&mut self, learning_rate: f32) {
-        let err_sig = self.err_sig.expect("Node has no error signal");
-        self.b_weight += err_sig * learning_rate;
-        self.links
-            .iter_mut()
-            // I thought link.value should be link.evaluate(), but ig I was wrong
-            .for_each(|link| link.weight = link.weight + err_sig * link.value * learning_rate);
-    }
 
     fn sigmoid(x: f32) -> f32 {
         1.0 / (1.0 + ((-x).exp()))

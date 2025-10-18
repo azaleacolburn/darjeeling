@@ -2,6 +2,8 @@ use ndarray::{arr2, Array1, Array2};
 use rand::{rngs::ThreadRng, Rng};
 use serde::{Deserialize, Serialize};
 
+use crate::activation::ActivationFunction;
+
 #[derive(Debug, Clone)]
 pub struct Layer {
     weights: Array2<f32>,
@@ -61,6 +63,25 @@ impl Layer {
         (self.cached_outputs.dot(&previous_layer.weights) + &self.biases)
             .map(|n| activation_function(*n))
     }
+}
+
+pub fn compute_answer_err_sig(
+    cached_output: f32,
+    correct_answer: f32,
+    derivative: fn(f32) -> f32,
+) -> f32 {
+    let slope: f32 = derivative(cached_output);
+
+    (correct_answer - cached_output) * slope
+}
+
+pub fn adjust_weights(learning_rate: f32) {
+    let err_sig = self.err_sig.expect("Node has no error signal");
+    self.b_weight += err_sig * learning_rate;
+    self.links
+        .iter_mut()
+        // I thought link.value should be link.evaluate(), but ig I was wrong
+        .for_each(|link| link.weight = link.weight + err_sig * link.value * learning_rate);
 }
 
 impl Serialize for Layer {

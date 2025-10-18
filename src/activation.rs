@@ -6,7 +6,6 @@ pub enum ActivationFunction {
     Sigmoid,
     Tanh,
     Linear,
-    Step,
 }
 
 impl ActivationFunction {
@@ -14,8 +13,15 @@ impl ActivationFunction {
         match self {
             ActivationFunction::Sigmoid => sigmoid,
             ActivationFunction::Tanh => tanh,
-            ActivationFunction::Step => step,
             ActivationFunction::Linear => linear,
+        }
+    }
+
+    pub fn to_derivative(&self) -> fn(f32) -> f32 {
+        match self {
+            ActivationFunction::Sigmoid => bell_curve,
+            ActivationFunction::Linear => constant,
+            ActivationFunction::Tanh => sech_squared,
         }
     }
 }
@@ -34,12 +40,17 @@ fn tanh(x: f32) -> f32 {
     2.00 / (1.00 + e.powf(-2.00 * x)) - 1.00
 }
 
-fn step(x: f32) -> f32 {
-    if x < 0.00 {
-        -1.00
-    } else {
-        1.00
-    }
+// Derivative functions
+fn bell_curve(y: f32) -> f32 {
+    y * (1.0 - y)
+}
+
+fn constant(_y: f32) -> f32 {
+    1.
+}
+
+fn sech_squared(y: f32) -> f32 {
+    1. - y.powi(2)
 }
 
 impl fmt::Display for ActivationFunction {
@@ -48,7 +59,6 @@ impl fmt::Display for ActivationFunction {
             ActivationFunction::Sigmoid => write!(f, "sigmoid"),
             ActivationFunction::Linear => write!(f, "linear"),
             ActivationFunction::Tanh => write!(f, "tanh"),
-            ActivationFunction::Step => write!(f, "step"),
         }
     }
 }
